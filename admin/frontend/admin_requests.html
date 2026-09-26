@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Requests</title>
+
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --dark: #111827;
+      --dark-hover: #374151;
+      --accent: #2563eb;
+      --danger: #b91c1c;
+      --danger-bg: #fee2e2;
+      --success: #15803d;
+      --success-bg: #dcfce7;
+      --warning: #b45309;
+      --warning-bg: #fef3c7;
+      --info: #1d4ed8;
+      --info-bg: #dbeafe;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --shadow: 0 8px 24px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; }
+
+    header.app-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    header.app-header h1 { font-size: 1.2rem; }
+
+    .header-right { display: flex; align-items: center; gap: 14px; }
+
+    .user-type { color: var(--muted); font-size: 0.9rem; }
+
+    .back-link { color: var(--dark); text-decoration: none; font-weight: bold; font-size: 0.95rem; }
+    .back-link:hover { text-decoration: underline; }
+
+    nav.app-nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+    }
+
+    nav.app-nav a {
+      display: inline-block;
+      padding: 14px 12px;
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: bold;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+    }
+
+    nav.app-nav a.active,
+    nav.app-nav a:hover {
+      color: var(--dark);
+      border-bottom-color: var(--dark);
+    }
+
+    main { width: min(1100px, 92%); margin: 32px auto; padding-bottom: 80px; }
+
+    .page-heading { margin-bottom: 24px; }
+    .page-heading h1 { font-size: 1.9rem; margin-bottom: 8px; }
+    .page-heading p { color: var(--muted); line-height: 1.6; }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+
+    .btn {
+      display: inline-block;
+      border: 0;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-weight: bold;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    .btn-primary { background: var(--dark); color: #fff; }
+    .btn-primary:hover { background: var(--dark-hover); }
+    .btn-secondary { background: #eef0f3; color: var(--dark); }
+    .btn-secondary:hover { background: #e2e5ea; }
+    .btn-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-success { background: var(--success-bg); color: var(--success); }
+    .btn-block { width: 100%; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-sm { padding: 8px 12px; font-size: 0.85rem; }
+
+    .form-group { margin-bottom: 18px; }
+    label { display: block; margin-bottom: 7px; font-weight: bold; font-size: 0.92rem; }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: var(--radius-md);
+      padding: 11px 13px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input:focus, textarea:focus, select:focus, button:focus, a:focus {
+      outline: 3px solid #93c5fd;
+      outline-offset: 1px;
+    }
+
+    textarea { resize: vertical; min-height: 90px; }
+
+    .field-error { color: var(--danger); font-size: 0.85rem; margin-top: 6px; display: none; }
+    .field-error.show { display: block; }
+    input.invalid, textarea.invalid, select.invalid { border-color: var(--danger); }
+
+    .hint { color: var(--muted); font-size: 0.82rem; margin-top: 6px; }
+
+    .message-banner {
+      display: none;
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+    .message-banner.show { display: block; }
+    .message-banner.success { background: var(--success-bg); color: var(--success); border-color: #bbf7d0; }
+    .message-banner.error { background: var(--danger-bg); color: var(--danger); border-color: #fecaca; }
+    .message-banner.info { background: var(--info-bg); color: var(--info); border-color: #bfdbfe; }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 11px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .badge-open, .badge-available, .badge-pending, .badge-not_started { background: var(--warning-bg); color: var(--warning); }
+    .badge-assigned, .badge-in_progress, .badge-reserved { background: var(--info-bg); color: var(--info); }
+    .badge-completed, .badge-verified, .badge-collected { background: var(--success-bg); color: var(--success); }
+    .badge-cancelled, .badge-rejected, .badge-suspended, .badge-expired { background: var(--danger-bg); color: var(--danger); }
+    .badge-neutral { background: #eef0f3; color: var(--dark); }
+
+    .empty-state, .error-state, .loading-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-lg);
+      background: #fbfbfc;
+    }
+    .error-state { color: var(--danger); border-color: #fecaca; background: #fff5f5; }
+    .empty-state h3, .error-state h3 { color: var(--text); margin-bottom: 6px; font-size: 1.05rem; }
+
+    .item-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .item-card .item-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+    .item-card h3 { font-size: 1.05rem; }
+    .item-card .meta { color: var(--muted); font-size: 0.85rem; margin: 3px 0; }
+    .item-card .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(17,24,39,0.5);
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      width: min(560px, 100%);
+      box-shadow: 0 20px 45px rgba(0,0,0,0.25);
+    }
+    .modal-box h2 { margin-bottom: 6px; }
+    .modal-box .modal-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+    .modal-close {
+      float: right;
+      background: none;
+      border: 0;
+      font-size: 1.3rem;
+      cursor: pointer;
+      color: var(--muted);
+      line-height: 1;
+    }
+    .modal-actions { display: flex; gap: 12px; margin-top: 22px; }
+
+    .filters-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      background: var(--surface);
+      padding: 16px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+    .filters-bar .form-group { margin-bottom: 0; flex: 1; min-width: 150px; }
+
+    .helpline-button {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      border: 0;
+      background: var(--dark);
+      color: #fff;
+      font-size: 1.6rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 90;
+    }
+    .helpline-button:hover { background: var(--dark-hover); }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow); }
+    .stat-card .stat-value { font-size: 1.8rem; font-weight: bold; }
+    .stat-card .stat-label { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+    table.data-table { width: 100%; border-collapse: collapse; }
+    table.data-table th, table.data-table td {
+      text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+    }
+    table.data-table th { color: var(--muted); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .table-wrap { overflow-x: auto; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+    .table-wrap table.data-table { padding: 4px; }
+    .table-wrap th:first-child, .table-wrap td:first-child { padding-left: 20px; }
+
+    .section-title { font-size: 1.15rem; margin: 30px 0 14px; }
+    .section-title:first-of-type { margin-top: 0; }
+
+    .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+    .status-dot.on { background: var(--success); }
+    .status-dot.off { background: var(--muted); }
+
+    .progress-bar { background: #eef0f3; border-radius: 999px; height: 10px; overflow: hidden; margin-top: 8px; }
+    .progress-bar-fill { background: var(--dark); height: 100%; }
+
+    @media (max-width: 640px) {
+      header.app-header, nav.app-nav { padding-left: 16px; padding-right: 16px; }
+      main { margin: 20px auto; }
+      .card { padding: 20px; }
+      .modal-box { padding: 20px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="app-header">
+    <a class="back-link" href="admin_dashboard.html">← Back to Dashboard</a>
+  </header>
+  <nav class="app-nav">
+    <a href="admin_dashboard.html">Dashboard</a>
+    <a href="admin_verify-assistants.html">Verify Assistants</a>
+    <a href="admin_users.html">Users</a>
+    <a href="admin_requests.html">Requests</a>
+    <a href="admin_donations.html">Donations</a>
+    <a href="admin_reports.html">Reports</a>
+  </nav>
+
+  <main>
+    <section class="page-heading">
+      <h1>Manage Requests</h1>
+      <p>Review community requests across the platform.</p>
+    </section>
+
+    <div class="filters-bar">
+      <div class="form-group">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="open">Open</option>
+          <option value="assigned">Assigned</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="typeFilter">Request Type</label>
+        <select id="typeFilter">
+          <option value="">All types</option>
+          <option value="service">Service</option>
+          <option value="resource">Resource</option>
+          <option value="problem">Problem</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="urgencyFilter">Urgency</label>
+        <select id="urgencyFilter">
+          <option value="">All urgencies</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>ID</th><th>Type</th><th>Category</th><th>Status</th><th>Location</th><th>Created</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="requestsTableBody"></tbody>
+      </table>
+      <div id="emptyStateContainer"></div>
+    </div>
+  </main>
+
+  <script src="../../shared/frontend/status.js"></script>
+  <script src="../../shared/frontend/ui.js"></script>
+  <script src="../../shared/frontend/navigation.js"></script>
+  <script src="admin_requests.js"></script>
+</body>
+</html>
