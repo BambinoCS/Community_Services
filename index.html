@@ -4,9 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Community Services</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 60px auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .card {
+            width: 250px;
+            padding: 25px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #111827;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+
+        a:hover {
+            background: #374151;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Community Services</h1>
-    <p>My website is working!</p>
+
+    <h1>Community Services Platform</h1>
+
+    <p>Select your role:</p>
+
+    <div class="container">
+
+        <div class="card">
+            <h2>Community User</h2>
+            <p>Request help, donate items and browse community requests.</p>
+            <a href="community-user/frontend/community-user_dashboard.html">
+                Community User
+            </a>
+        </div>
+
+        <div class="card">
+            <h2>Verified Assistant</h2>
+            <p>View requests and manage your assistance activities.</p>
+            <a href="verified-assistant/frontend/verified_assistant_dashboard.html">
+                Verified Assistant
+            </a>
+        </div>
+
+        <div class="card">
+            <h2>Administrator</h2>
+            <p>Manage users, requests, donations and assistants.</p>
+            <a href="admin/frontend/admin_dashboard.html">
+                Administrator
+            </a>
+        </div>
+
+    </div>
+
 </body>
 </html>
