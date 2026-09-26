@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Request Help</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 18px 28px;
+    }
+
+    .back-link {
+      color: #111827;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    main {
+      width: min(950px, 92%);
+      margin: 40px auto;
+      padding-bottom: 100px;
+    }
+
+    .page-heading {
+      margin-bottom: 28px;
+    }
+
+    .page-heading h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .page-heading p {
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .help-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .help-card {
+      background: #ffffff;
+      border: 0;
+      border-radius: 16px;
+      padding: 28px;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+      transition: 0.2s ease;
+    }
+
+    .help-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+    }
+
+    .help-card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+
+    .help-card p {
+      color: #6b7280;
+      line-height: 1.5;
+    }
+
+    .helpline-button {
+      position: fixed;
+      right: 28px;
+      bottom: 28px;
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 0;
+      background: #111827;
+      color: white;
+      font-size: 1.7rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .notice {
+      display: none;
+      margin-top: 24px;
+      padding: 16px 18px;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <a class="back-link" href="community-user_dashboard.html">← Back to Dashboard</a>
+  </header>
+
+  <main>
+    <section class="page-heading">
+      <h1>Request Help</h1>
+      <p>
+        Select the type of help you need. The detailed forms and backend logic
+        for these options can be connected later.
+      </p>
+    </section>
+
+    <section class="help-grid">
+      <button class="help-card" data-feature="Report a Problem">
+        <h2>Report a Problem</h2>
+        <p>
+          Report a community issue, platform issue, safety concern, or another
+          problem that requires attention.
+        </p>
+      </button>
+
+      <button class="help-card" data-feature="Request Service">
+        <h2>Request Service</h2>
+        <p>
+          Ask for approved assistance such as delivery, accompaniment,
+          transport support, or help reaching essential services.
+        </p>
+      </button>
+
+      <button class="help-card" data-feature="Request New Items">
+        <h2>Request New Items</h2>
+        <p>
+          Request food, water, clothing, school supplies, household goods, or
+          other essential resources.
+        </p>
+      </button>
+    </section>
+
+    <div id="notice" class="notice"></div>
+  </main>
+
+  <button
+    id="helplineButton"
+    class="helpline-button"
+    type="button"
+    title="Helpline"
+    aria-label="Open helpline"
+  >
+    ?
+  </button>
+
+  <script src="community-user_request-help.js"></script>
+</body>
+</html>

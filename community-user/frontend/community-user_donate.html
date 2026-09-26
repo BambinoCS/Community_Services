@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Donate Item</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 18px 28px;
+    }
+
+    .back-link {
+      color: #111827;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    main {
+      width: min(900px, 92%);
+      margin: 40px auto;
+      padding-bottom: 50px;
+    }
+
+    .page-heading {
+      margin-bottom: 24px;
+    }
+
+    .page-heading h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .page-heading p {
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .form-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 22px;
+      background: #f8fafc;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .preview-grid img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px 18px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .primary-button {
+      background: #111827;
+      color: #ffffff;
+    }
+
+    .secondary-button {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .message {
+      display: none;
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #374151;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <a class="back-link" href="community-user_dashboard.html">← Back to Dashboard</a>
+  </header>
+
+  <main>
+    <section class="page-heading">
+      <h1>Donate an Item</h1>
+      <p>
+        Add an item you want to give away for free. Include pictures, a clear
+        description, and the time when the item is available for collection.
+      </p>
+    </section>
+
+    <section class="form-card">
+      <form id="donationForm">
+        <div class="form-group">
+          <label for="itemName">Item Name</label>
+          <input
+            id="itemName"
+            name="itemName"
+            type="text"
+            placeholder="Example: Winter jackets"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="category">Category</label>
+          <select id="category" name="category" required>
+            <option value="">Select a category</option>
+            <option value="food">Food</option>
+            <option value="water">Water</option>
+            <option value="clothing">Clothing</option>
+            <option value="school-supplies">School Supplies</option>
+            <option value="household-goods">Household Goods</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea
+            id="description"
+            name="description"
+            placeholder="Describe the item, condition, quantity, size, or anything else people should know."
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="quantity">Quantity</label>
+          <input
+            id="quantity"
+            name="quantity"
+            type="number"
+            min="1"
+            value="1"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="location">Collection Area / Location</label>
+          <input
+            id="location"
+            name="location"
+            type="text"
+            placeholder="Example: Hatfield, Pretoria"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="availableFrom">Available From</label>
+          <input
+            id="availableFrom"
+            name="availableFrom"
+            type="datetime-local"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="availableUntil">Available Until</label>
+          <input
+            id="availableUntil"
+            name="availableUntil"
+            type="datetime-local"
+            required
+          />
+        </div>
+
+        <div class="form-group upload-area">
+          <label for="images">Upload Pictures</label>
+          <input
+            id="images"
+            name="images"
+            type="file"
+            accept="image/*"
+            multiple
+          />
+          <div id="previewGrid" class="preview-grid"></div>
+        </div>
+
+        <div class="button-row">
+          <button class="primary-button" type="submit">
+            Upload Donation
+          </button>
+
+          <button
+            id="browseRequestsButton"
+            class="secondary-button"
+            type="button"
+          >
+            Browse Requests
+          </button>
+        </div>
+
+        <div id="message" class="message"></div>
+      </form>
+    </section>
+  </main>
+
+  <script src="community-user_donate.js"></script>
+</body>
+</html>
