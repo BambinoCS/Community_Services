@@ -1,9 +1,9 @@
-html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard</title>
+  <title>Browse Requests</title>
 
   <style>
     :root {
@@ -300,31 +300,67 @@ html><!DOCTYPE html>
 
 <body>
   <header class="app-header">
-    <h1>Community Service Platform</h1>
-    <div class="header-right"><span class="user-type">Admin</span></div>
+    <a class="back-link" href="community-user_donate.html">← Back to Donate</a>
   </header>
+
   <nav class="app-nav">
-    <a href="admin_dashboard.html">Dashboard</a>
-    <a href="admin_verify-assistants.html">Verify Assistants</a>
-    <a href="admin_users.html">Users</a>
-    <a href="admin_requests.html">Requests</a>
-    <a href="admin_donations.html">Donations</a>
-    <a href="admin_reports.html">Reports</a>
+    <a href="community-user_dashboard.html">Dashboard</a>
+    <a href="community-user_request-help.html">Request Help</a>
+    <a href="community-user_requests.html">My Requests</a>
+    <a href="community-user_donate.html">Donate</a>
+    <a href="community-user_browse-requests.html">Browse Requests</a>
   </nav>
 
   <main>
     <section class="page-heading">
-      <h1>Admin Dashboard</h1>
-      <p>Platform-wide statistics and quick access to management tools.</p>
+      <h1>Browse Community Requests</h1>
+      <p>See what other community members currently need so you can decide what to donate.</p>
     </section>
 
-    <section id="statsContainer" class="stat-grid"></section>
+    <div class="filters-bar">
+      <div class="form-group">
+        <label for="categoryFilter">Category</label>
+        <select id="categoryFilter">
+          <option value="">All categories</option>
+          <option value="food">Food</option>
+          <option value="water">Water</option>
+          <option value="clothing">Clothing</option>
+          <option value="school_supplies">School Supplies</option>
+          <option value="household_goods">Household Goods</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="requestTypeFilter">Request Type</label>
+        <select id="requestTypeFilter">
+          <option value="">All types</option>
+          <option value="service">Service</option>
+          <option value="resource">Resource</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="urgencyFilter">Urgency</label>
+        <select id="urgencyFilter">
+          <option value="">All urgencies</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="locationFilter">Location</label>
+        <input type="text" id="locationFilter" placeholder="e.g. Hatfield" />
+      </div>
+    </div>
+
+    <section id="requestsContainer" class="grid">
+      <!-- Populated by JS -->
+    </section>
   </main>
 
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
   <script src="../../shared/frontend/navigation.js"></script>
-  <script src="admin_dashboard.js"></script>
+  <script src="community-user_browse-requests.js"></script>
 </body>
-</
-html>
+</html>
