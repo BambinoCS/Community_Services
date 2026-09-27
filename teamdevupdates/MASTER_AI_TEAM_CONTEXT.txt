@@ -1,0 +1,1292 @@
+
+COMMUNITY SERVICE DELIVERY PLATFORM
+MASTER AI TEAM CONTEXT + COLLABORATION PROMPT
+Version: 1.0
+Purpose: Give this file to every team member and every AI assistant before coding.
+Goal: Keep all developers and AI assistants aligned so the system is built as one coherent project.
+
+======================================================================
+1. PROJECT OVERVIEW
+======================================================================
+
+Project Name:
+Community Service Delivery Platform
+
+Problem:
+Many communities face linked problems such as unemployment, limited access to food,
+water, clothing, school supplies, transport, healthcare, and other essential services.
+
+Some businesses, organisations, government programmes, sponsors, and individuals
+have resources available to help, but there is often no efficient system connecting
+available resources to the people who need them.
+
+At the same time, unemployed or underemployed community members may be willing
+and able to assist others but lack structured opportunities, training, verification,
+and a trustworthy way to connect with people who need support.
+
+The platform should connect:
+- Community users who need help
+- Community users who want to donate resources
+- Verified assistants who can perform approved services
+- Administrators who manage, verify, and supervise the platform
+- Organisations / sponsors / donors later if added
+
+Main outcomes:
+- Safety
+- Employment
+- Access to resources
+- Community support
+
+Important:
+Verified assistants are helpers, not police or law-enforcement officers.
+
+======================================================================
+2. CURRENT TECH STACK
+======================================================================
+
+Frontend:
+- HTML
+- CSS written INSIDE each HTML file using <style> tags
+- JavaScript in separate .js files
+
+Backend:
+- JavaScript
+- Node.js
+- Express.js where backend routes are needed
+
+Database / Auth / Storage:
+- Supabase
+- Supabase PostgreSQL
+- Supabase Authentication
+- Supabase Storage
+- Supabase Row Level Security
+
+Version Control:
+- Git
+- GitHub repository:
+  https://github.com/BambinoCS/Community_Services.git
+
+IMPORTANT SECURITY RULE:
+Never commit real secrets to GitHub.
+Never place SUPABASE_SERVICE_ROLE_KEY in frontend code.
+Never hardcode passwords, service-role keys, private tokens, or secrets.
+
+======================================================================
+3. CURRENT REPOSITORY ORGANISATION
+======================================================================
+
+The project is organised FIRST by user type.
+
+Preferred top-level structure:
+
+Community_Services/
+|
+|-- community-user/
+|   |-- frontend/
+|   |-- backend/
+|
+|-- verified-assistant/
+|   |-- frontend/
+|   |-- backend/
+|
+|-- admin/
+|   |-- frontend/
+|   |-- backend/
+|
+|-- shared/
+|   |-- frontend/
+|   |-- backend/
+|   |-- supabase/
+|   |-- tests/
+|   |-- docs/
+|
+|-- README.md
+|-- .gitignore
+|-- .env.example
+
+Do NOT reorganise this architecture unless the team explicitly agrees first.
+
+======================================================================
+4. NAMING CONVENTION
+======================================================================
+
+Files should make their role obvious.
+
+Community User examples:
+- community-user_dashboard.html
+- community-user_dashboard.js
+- community-user_request-help.html
+- community-user_request-help.js
+- community-user_donate.html
+- community-user_donate.js
+
+Verified Assistant examples:
+- verified-assistant_dashboard.html
+- verified-assistant_dashboard.js
+- verified-assistant_available-requests.html
+- verified-assistant_available-requests.js
+
+Admin examples:
+- admin_dashboard.html
+- admin_dashboard.js
+- admin_verify-assistants.html
+- admin_verify-assistants.js
+
+Backend examples:
+- community-user_request.routes.js
+- community-user_request.controller.js
+- verified-assistant_jobs.routes.js
+- verified-assistant_jobs.controller.js
+
+Prefer lowercase file names with hyphens or underscores consistently.
+Do not rename existing files casually because other pages may link to them.
+
+======================================================================
+5. CURRENT COMMUNITY USER FRONTEND
+======================================================================
+
+The current community-user frontend should include:
+
+community-user/frontend/
+- community-user_dashboard.html
+- community-user_dashboard.js
+- community-user_request-help.html
+- community-user_request-help.js
+- community-user_donate.html
+- community-user_donate.js
+
+--------------------------------------------------
+5.1 COMMUNITY USER DASHBOARD
+--------------------------------------------------
+
+File:
+community-user_dashboard.html
+
+Purpose:
+The main landing page for a logged-in community user.
+
+Current main actions:
+1. Request Help
+2. Donate
+
+Request Help button should open:
+community-user_request-help.html
+
+Donate button should open:
+community-user_donate.html
+
+The dashboard currently does NOT need a separate CSS file.
+CSS is written inside the HTML page.
+
+--------------------------------------------------
+5.2 REQUEST HELP PAGE
+--------------------------------------------------
+
+File:
+community-user_request-help.html
+
+Required buttons:
+- Report a Problem
+- Request Service
+- Request New Items
+
+Required special element:
+- Helpline button shown as a circular "?" button at the bottom-right of the page
+
+These features can initially be placeholders.
+They will get their own forms / backend implementation later.
+
+Intended future meanings:
+
+Report a Problem:
+- Community issue
+- Platform issue
+- Safety issue
+- Service issue
+- Other issue requiring attention
+
+Request Service:
+Possible approved services:
+- Food / water delivery
+- Grocery collection
+- Accompany vulnerable users
+- Help users reach public transport
+- Help users reach healthcare facilities
+- Deliver donated resources
+- Other approved community services
+
+Request New Items:
+Examples:
+- Food
+- Water
+- Clothing
+- School supplies
+- Household goods
+- Other essentials
+
+Helpline:
+- Later should show support / assistance information
+- Do not invent emergency response claims
+- It is currently only a UI placeholder
+
+--------------------------------------------------
+5.3 DONATE PAGE
+--------------------------------------------------
+
+File:
+community-user_donate.html
+
+Purpose:
+Allow a user to upload an item they are giving away for free.
+
+Fields currently expected:
+- Item name
+- Category
+- Description
+- Quantity
+- Collection area / location
+- Available from date/time
+- Available until date/time
+- One or more images
+
+Buttons:
+- Upload Donation
+- Browse Requests
+
+Browse Requests:
+- Will be implemented later
+- Intended to let donors see what community members currently need
+
+Upload Donation:
+- Frontend currently prepares and validates information
+- Later it should upload images to Supabase Storage
+- Later it should insert donation metadata into Supabase PostgreSQL
+
+Image upload:
+- Multiple images should be allowed
+- Image previews should be shown before upload when practical
+
+======================================================================
+6. VERIFIED ASSISTANT ROLE
+======================================================================
+
+Verified assistants are community members who:
+- Register
+- Complete required training
+- Are verified
+- Can accept approved requests/jobs
+- Can indicate availability
+- Can help community users with approved services
+
+Planned assistant dashboard functions:
+- View available requests
+- Accept a request
+- View active jobs
+- Complete a request/job
+- View completed jobs
+- Set availability
+- View profile
+- View training / verification state
+- Clock in / clock out if the team decides to use this feature
+
+Possible verification states:
+- PENDING
+- TRAINING
+- VERIFIED
+- SUSPENDED
+
+Possible availability:
+- AVAILABLE
+- UNAVAILABLE
+
+Do not allow an unverified assistant to accept protected service jobs.
+
+======================================================================
+7. ADMIN ROLE
+======================================================================
+
+Planned admin capabilities:
+- View users
+- View verified assistant applications
+- Verify assistants
+- Suspend assistants when necessary
+- View requests
+- View donations
+- View reports
+- Manage service categories
+- Manage resource categories
+- View platform statistics
+- Handle moderation / platform issues
+
+Admin pages should remain separate from community-user and verified-assistant pages.
+
+======================================================================
+8. SUPABASE DESIGN
+======================================================================
+
+Supabase should be the main database/auth/storage system.
+
+Use Supabase Auth for authentication.
+
+Do NOT create a separate custom password table.
+
+Recommended tables:
+
+profiles
+assistants
+requests
+donations
+assignments
+reports
+notifications
+organisations  (optional / later)
+
+--------------------------------------------------
+8.1 PROFILES
+--------------------------------------------------
+
+Recommended fields:
+
+profiles
+- id
+- first_name
+- last_name
+- phone
+- role
+- created_at
+
+id should correspond to the Supabase authenticated user id.
+
+Possible roles:
+- community_user
+- assistant
+- admin
+- organisation
+
+--------------------------------------------------
+8.2 ASSISTANTS
+--------------------------------------------------
+
+assistants
+- id
+- user_id
+- verification_status
+- training_status
+- availability
+- rating
+- created_at
+
+Potential statuses:
+verification_status:
+- pending
+- verified
+- rejected
+- suspended
+
+training_status:
+- not_started
+- in_progress
+- completed
+
+--------------------------------------------------
+8.3 REQUESTS
+--------------------------------------------------
+
+requests
+- id
+- user_id
+- request_type
+- category
+- description
+- location
+- status
+- created_at
+
+Potential request types:
+- resource
+- service
+- problem
+
+Potential statuses:
+- open
+- assigned
+- in_progress
+- completed
+- cancelled
+
+--------------------------------------------------
+8.4 DONATIONS
+--------------------------------------------------
+
+donations
+- id
+- donor_id
+- item_name
+- category
+- description
+- quantity
+- location
+- available_from
+- available_until
+- status
+- created_at
+
+Potential donation statuses:
+- available
+- reserved
+- collected
+- expired
+- cancelled
+
+Images should preferably be stored in Supabase Storage.
+Database rows store paths / URLs, not raw image blobs.
+
+--------------------------------------------------
+8.5 ASSIGNMENTS
+--------------------------------------------------
+
+assignments
+- id
+- request_id
+- assistant_id
+- status
+- accepted_at
+- completed_at
+
+Purpose:
+Link a request to the verified assistant handling it.
+
+======================================================================
+9. SUPABASE STORAGE
+======================================================================
+
+Potential buckets:
+- avatars
+- donation-images
+- verification-documents
+
+Important:
+Verification documents should NOT be publicly accessible.
+
+Do not use public buckets for sensitive documents unless the team explicitly
+understands the privacy/security consequences.
+
+======================================================================
+10. ROW LEVEL SECURITY
+======================================================================
+
+RLS should be enabled on user-owned or sensitive tables.
+
+Examples of intended policy logic:
+
+Profiles:
+- Users can read their own profile
+- Users can update their own profile
+- Admins may have broader access
+
+Requests:
+- Community users can create requests
+- Users can view their own request history
+- Verified assistants can view eligible open service requests
+- Only appropriate users/admins can change sensitive statuses
+
+Donations:
+- Users can create donations
+- Users can edit their own donations
+- Public/community browsing rules should be explicitly defined
+
+Assignments:
+- Assistants should only see assignments relevant to them
+- Sensitive status changes should be protected
+
+Never rely only on hiding buttons in the frontend for security.
+Real permissions must be enforced with backend checks and/or Supabase RLS.
+
+======================================================================
+11. BACKEND ARCHITECTURE
+======================================================================
+
+Preferred backend pattern:
+
+Route
+  ->
+Controller
+  ->
+Service if needed
+  ->
+Supabase
+
+Example:
+
+POST /api/requests
+  ->
+request.routes.js
+  ->
+request.controller.js
+  ->
+Supabase requests table
+
+Use services for logic that is more than simple CRUD.
+
+Possible backend folders inside each user role:
+
+backend/
+- routes/
+- controllers/
+- services/
+- middleware/
+
+Shared backend logic should go under:
+shared/backend/
+
+Examples of shared concerns:
+- Supabase admin client
+- Auth middleware
+- Error handling
+- Role checking
+- Validation helpers
+
+Do not duplicate shared logic in every user folder unless necessary.
+
+======================================================================
+12. FRONTEND RULES
+======================================================================
+
+Current project preference:
+- HTML page
+- CSS inside that HTML page
+- JavaScript in separate .js file
+
+Do not create separate CSS files unless the team agrees to change this rule.
+
+Frontend code should:
+- Be readable
+- Use clear ids / classes
+- Avoid huge amounts of repeated code
+- Keep page navigation predictable
+- Work on desktop and mobile where practical
+
+Do not place Supabase service role keys in frontend JavaScript.
+
+Frontend Supabase usage:
+- Supabase anon key is acceptable in frontend when RLS is configured correctly
+- Sensitive privileged operations should go through backend or secure server-side functions
+
+======================================================================
+13. API / DATA CONTRACT RULE
+======================================================================
+
+Before two team members independently implement frontend and backend for the
+same feature, define the data shape first.
+
+Example donation payload:
+
+{
+  "itemName": "Winter jackets",
+  "category": "clothing",
+  "description": "Three clean jackets",
+  "quantity": 3,
+  "location": "Hatfield",
+  "availableFrom": "2026-09-27T10:00",
+  "availableUntil": "2026-09-28T17:00"
+}
+
+Example service request payload:
+
+{
+  "requestType": "service",
+  "category": "grocery_collection",
+  "description": "Need help collecting groceries",
+  "location": "Example area"
+}
+
+If field names change, announce the change to the team.
+Do not silently rename payload fields because it breaks other people's code.
+
+======================================================================
+14. GIT WORKFLOW
+======================================================================
+
+Repository:
+https://github.com/BambinoCS/Community_Services.git
+
+Before starting work:
+
+git pull origin main
+
+Check state:
+
+git status
+
+Add changes:
+
+git add .
+
+Commit:
+
+git commit -m "Describe the change clearly"
+
+Push:
+
+git push origin main
+
+IMPORTANT:
+If push is rejected because remote is ahead:
+
+git pull --rebase origin main
+
+Then:
+
+git push origin main
+
+If there is a merge conflict:
+DO NOT use force push automatically.
+Run:
+
+git status
+
+Then resolve the conflict carefully.
+
+Never use:
+git push --force
+
+unless the team explicitly agrees and understands what will be overwritten.
+
+======================================================================
+15. BETTER TEAM GIT WORKFLOW
+======================================================================
+
+If multiple team members are coding at the same time, branches are safer.
+
+Examples:
+
+feature/community-dashboard
+feature/request-help
+feature/donations
+feature/assistant-dashboard
+feature/admin-dashboard
+feature/supabase-schema
+
+Create branch:
+
+git switch -c feature/community-dashboard
+
+or:
+
+git checkout -b feature/community-dashboard
+
+Push branch first time:
+
+git push -u origin feature/community-dashboard
+
+After that:
+
+git push
+
+Use pull requests to merge into main if possible.
+
+======================================================================
+16. AI COLLABORATION PROTOCOL
+======================================================================
+
+This section is extremely important.
+
+Every AI assistant working on this project should behave as if it is one member
+of a shared engineering team.
+
+Before coding, the AI should:
+
+1. Read this entire context file.
+2. Read the latest TEAM_UPDATE.txt or similar update file.
+3. Check the current repository structure if available.
+4. Avoid renaming existing files unnecessarily.
+5. Avoid changing architecture without explaining why.
+6. Keep compatibility with existing code.
+7. State which files it plans to create or modify.
+8. Preserve current user-role separation.
+9. Preserve Supabase as database/auth/storage platform.
+10. Use JavaScript where applicable instead of Python.
+
+The AI should NOT:
+- Rebuild the entire project from scratch unless asked
+- Replace Supabase with another database
+- Replace Node.js with Python
+- Introduce React/Vue/etc. unless the team agrees
+- Move CSS into separate files unless the team agrees
+- Change naming conventions without a reason
+- Invent backend endpoints already implemented differently
+- Duplicate functionality already created by another team member
+- Delete another member's work without explanation
+- Force push to GitHub
+
+======================================================================
+17. TEAM UPDATE FILE FORMAT
+======================================================================
+
+After a team member or AI finishes meaningful work, create or update a text file
+using this format.
+
+Recommended filename examples:
+
+TEAM_UPDATE_2026-09-26_MEMBER1.txt
+TEAM_UPDATE_2026-09-26_DONATIONS.txt
+TEAM_UPDATE_LATEST.txt
+
+Use this template:
+
+------------------------------------------------------------
+TEAM UPDATE
+------------------------------------------------------------
+
+Date:
+Member / AI:
+Branch:
+Feature:
+
+FILES CREATED:
+- file/path/example1.js
+- file/path/example2.html
+
+FILES MODIFIED:
+- file/path/example3.js
+
+FEATURES COMPLETED:
+- Describe what now works
+
+FEATURES PARTIALLY COMPLETED:
+- Describe what exists but is not finished
+
+BACKEND ENDPOINTS ADDED:
+- METHOD /api/example
+- METHOD /api/example/:id
+
+DATABASE CHANGES:
+- New table
+- New column
+- New RLS policy
+- New migration
+
+SUPABASE STORAGE CHANGES:
+- Bucket created
+- Upload path rules
+
+IMPORTANT DATA SHAPES:
+- Request payloads
+- Response payloads
+- Changed field names
+
+KNOWN ISSUES:
+- Anything broken
+- Anything temporary
+- Anything unsafe that must be fixed
+
+TODO NEXT:
+- Next tasks
+
+DEPENDENCIES / PACKAGES ADDED:
+- npm package name
+
+ENVIRONMENT VARIABLES ADDED:
+- VARIABLE_NAME
+Do NOT include actual secret values.
+
+DECISIONS MADE:
+- Important architecture or naming decisions
+
+NOTES FOR NEXT AI:
+- Anything the next AI must know before coding
+
+------------------------------------------------------------
+
+Every AI should read the latest update file before making changes.
+
+======================================================================
+18. CHANGELOG DISCIPLINE
+======================================================================
+
+When making an important change, document:
+- What changed
+- Why it changed
+- What files were affected
+- Whether another component needs updating
+
+Examples:
+
+BAD:
+"Changed request code."
+
+GOOD:
+"Changed donation field `availableTime` into `availableFrom` and
+`availableUntil` in community-user_donate.js. Backend insert logic and
+Supabase table must use the same names."
+
+BAD:
+"Fixed assistant stuff."
+
+GOOD:
+"Verified assistant job acceptance now changes request.status from `open`
+to `assigned` and creates an assignments row."
+
+======================================================================
+19. FEATURE OWNERSHIP
+======================================================================
+
+The team may divide work by feature.
+
+Possible allocation:
+
+Member 1:
+Community User
+- Dashboard
+- Request Help
+- Donation UI
+
+Member 2:
+Verified Assistant
+- Dashboard
+- Available jobs
+- Accept job
+- Active jobs
+
+Member 3:
+Admin
+- Dashboard
+- Assistant verification
+- Reports
+
+Member 4:
+Supabase
+- Tables
+- Migrations
+- RLS
+- Storage
+
+Member 5:
+Backend
+- Express
+- API integration
+- Middleware
+- Shared services
+
+This is only an example.
+The actual team can allocate differently.
+
+======================================================================
+20. FIRST END-TO-END SYSTEM FLOW TO BUILD
+======================================================================
+
+Do not try to build every feature at once.
+
+Recommended first complete workflow:
+
+1. User registers
+2. User logs in
+3. User opens Community User Dashboard
+4. User selects Request Help
+5. User creates a service request
+6. Request is saved in Supabase
+7. Verified Assistant Dashboard shows eligible open request
+8. Verified assistant accepts request
+9. Assignment row is created
+10. Request becomes ASSIGNED
+11. Assistant marks job IN_PROGRESS
+12. Assistant marks job COMPLETED
+13. Community user sees completed status in request history
+
+This gives the project a complete working vertical slice.
+
+Second recommended flow:
+
+1. User opens Donate
+2. User enters item details
+3. User uploads images
+4. Images go to Supabase Storage
+5. Donation metadata is saved to database
+6. Other users can browse available donations
+7. Donation can later be reserved / collected
+
+======================================================================
+21. AUTHENTICATION PLAN
+======================================================================
+
+Use Supabase Auth.
+
+Recommended:
+- Email/password initially
+- Profile row created after signup
+
+Login flow:
+Frontend
+  ->
+Supabase Auth
+  ->
+Session
+  ->
+Load profile / role
+  ->
+Redirect to correct dashboard
+
+Possible redirects:
+
+community_user
+  -> community-user_dashboard.html
+
+assistant
+  -> verified-assistant_dashboard.html
+
+admin
+  -> admin_dashboard.html
+
+Do not trust role information only from localStorage.
+The role should ultimately be backed by trusted Supabase data and security rules.
+
+======================================================================
+22. STATUS VALUES SHOULD BE CONSISTENT
+======================================================================
+
+Avoid different spellings across files.
+
+Recommended values:
+
+Request statuses:
+- open
+- assigned
+- in_progress
+- completed
+- cancelled
+
+Donation statuses:
+- available
+- reserved
+- collected
+- expired
+- cancelled
+
+Assistant verification:
+- pending
+- verified
+- rejected
+- suspended
+
+Assistant availability:
+- available
+- unavailable
+
+Keep these values lowercase in database/API code unless the team deliberately
+chooses another convention.
+
+======================================================================
+23. VALIDATION RULES
+======================================================================
+
+Frontend validation improves user experience.
+Backend/database validation protects the system.
+
+Examples:
+
+Donation:
+- Item name required
+- Description required
+- Quantity >= 1
+- Available until must be later than available from
+- Images should be valid image types
+- Optional future file size limit
+
+Request:
+- Request type required
+- Category required
+- Description required
+- Location required if needed for the service
+
+Never depend only on frontend validation.
+
+======================================================================
+24. SECURITY PRINCIPLES
+======================================================================
+
+Important:
+- Never trust client-supplied user_id blindly
+- Derive authenticated user identity from Supabase auth token where possible
+- Check role permissions on sensitive operations
+- Use RLS
+- Protect admin routes
+- Protect assistant verification operations
+- Keep service-role credentials server-side only
+- Validate uploads
+- Avoid exposing sensitive personal information publicly
+- Do not make verification documents publicly accessible
+
+======================================================================
+25. ERROR HANDLING
+======================================================================
+
+Backend responses should be predictable.
+
+Example success:
+
+{
+  "success": true,
+  "data": {...}
+}
+
+Example error:
+
+{
+  "success": false,
+  "error": "Human-readable message"
+}
+
+Use proper HTTP status codes later:
+- 200 OK
+- 201 Created
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+- 404 Not Found
+- 409 Conflict
+- 500 Internal Server Error
+
+Frontend should show readable messages to users instead of raw database errors.
+
+======================================================================
+26. FUTURE FEATURES
+======================================================================
+
+These are possible future additions, not mandatory immediately:
+
+Community User:
+- Request history
+- Donation history
+- Browse donations
+- Browse requests
+- Notifications
+- Chat / communication
+- Profile management
+
+Verified Assistant:
+- Job history
+- Availability calendar
+- Ratings
+- Service categories
+- Training documents
+- Verification documents
+- Clock in/out
+- Navigation / directions
+
+Admin:
+- Moderation
+- Metrics
+- Reports
+- Verification queues
+- Organisation management
+- Category management
+
+Platform:
+- Notifications
+- Matching
+- Realtime updates
+- Search / filters
+- Location-aware matching
+- SMS/email
+- Payments if required later
+
+Do not implement complex future features until the core workflows are stable.
+
+======================================================================
+27. CURRENT DESIGN INTENT FROM INITIAL SKETCHES
+======================================================================
+
+Community User Dashboard:
+- Request Help
+- Donate
+
+Request Help:
+- Report a Problem
+- Request Service
+- Request New Items
+- Helpline circular question-mark button
+- Later could include search / donated item browsing
+
+Donate:
+- Upload donation
+- Pictures
+- Description
+- Availability
+- Browse requests
+
+Verified Assistant:
+- Profile
+- Services
+- Availability
+- Jobs / requests
+- Clock in / clock out concept
+
+Admin:
+- Separate role
+- Manage / verify assistants
+- Manage platform operations
+
+Communication between users may be added later.
+
+======================================================================
+28. AI CODING STANDARD
+======================================================================
+
+When asked to implement a feature, an AI should ideally respond with:
+
+1. Short summary of what it will change
+2. Exact files created/modified
+3. Code
+4. Any Supabase SQL / migration needed
+5. Any environment variable needed
+6. Any route/API contract introduced
+7. Git commit suggestion
+8. A TEAM_UPDATE text entry
+
+The AI should preserve existing work and avoid broad unrelated rewrites.
+
+======================================================================
+29. SAFE MERGING BETWEEN AI-GENERATED WORK
+======================================================================
+
+Because multiple team members use AI, merge conflicts and duplicate architecture
+are likely unless disciplined.
+
+Before generating code:
+- Check whether target file already exists
+- Check latest update file
+- Reuse established names
+- Reuse established statuses
+- Reuse established API paths
+
+If an AI believes an existing approach should change:
+- Explain the conflict
+- Show compatibility impact
+- Prefer minimal migration
+- Do not silently replace another member's implementation
+
+======================================================================
+30. GIT COMMIT MESSAGE STYLE
+======================================================================
+
+Examples:
+
+Add community user dashboard
+Add request help page
+Add donation image preview
+Connect donation form to Supabase
+Add verified assistant job routes
+Add assistant verification policies
+Fix request status transition
+Add admin reports dashboard
+
+Avoid meaningless messages such as:
+- update
+- changes
+- stuff
+- fix code
+
+======================================================================
+31. IMPORTANT TEAM RULE
+======================================================================
+
+The source of truth is:
+1. Current GitHub repository
+2. Latest team update files
+3. This master context file
+
+If this file conflicts with newer code or a newer explicit team decision,
+the newer documented team decision wins.
+
+When that happens:
+UPDATE THIS MASTER FILE.
+
+Do not let this document become stale.
+
+======================================================================
+32. HOW TO USE THIS FILE WITH AN AI
+======================================================================
+
+At the start of a new AI conversation, say something like:
+
+"Read this project context fully before making changes. You are one developer
+inside a multi-person AI-assisted team. Preserve the existing architecture,
+file names, Supabase setup, and user-role separation. Ask only when a decision
+cannot safely be inferred. After finishing, give me a TEAM_UPDATE text block
+for the next developer/AI."
+
+Then provide:
+- This file
+- Latest TEAM_UPDATE file
+- Relevant current source files
+
+======================================================================
+33. PROMPT TO COPY INTO ANOTHER AI
+======================================================================
+
+You are working as one developer in a shared multi-person, AI-assisted software
+team building the Community Service Delivery Platform.
+
+Read the entire attached MASTER AI TEAM CONTEXT file and the latest TEAM_UPDATE
+file before writing code.
+
+You must preserve the agreed architecture:
+- JavaScript
+- Node.js / Express where backend is required
+- Supabase for database/auth/storage
+- Project organised first by user role:
+  community-user/
+  verified-assistant/
+  admin/
+  shared/
+- CSS stays inside HTML files
+- JavaScript stays in separate .js files
+- Do not introduce Python
+- Do not replace Supabase
+- Do not rename existing files unnecessarily
+- Do not expose secrets
+- Do not use force push
+- Reuse existing API contracts, status names, table names, and naming conventions
+
+Before coding:
+1. State the files you intend to modify/create.
+2. Check for conflicts with the latest documented team state.
+3. Keep changes scoped to the requested feature.
+
+While coding:
+1. Maintain compatibility with existing code.
+2. Use readable code.
+3. Validate inputs.
+4. Keep privileged Supabase operations server-side.
+5. Respect authentication, roles, and RLS.
+6. Do not silently change data contracts.
+
+After coding:
+1. Summarise what changed.
+2. List all files created/modified.
+3. List any database migration or RLS changes.
+4. List any API endpoints added or changed.
+5. List any environment variables added.
+6. List known issues.
+7. Give the next Git commands.
+8. Produce a TEAM_UPDATE text block following the project template.
+
+If there is uncertainty about an architecture decision, prefer compatibility
+with existing project code over inventing a new structure.
+
+======================================================================
+34. END OF MASTER CONTEXT
+======================================================================
+
+This file is intended to be updated as the project evolves.
+
+Recommended future filename:
+MASTER_AI_TEAM_CONTEXT.txt
+
+Recommended latest handoff filename:
+TEAM_UPDATE_LATEST.txt
+
+Keep both in:
+shared/docs/
+
+END.

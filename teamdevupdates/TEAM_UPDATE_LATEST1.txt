@@ -1,0 +1,503 @@
+COMMUNITY SERVICE DELIVERY PLATFORM TEAM UPDATE - SUPABASE FOUNDATION
+================================================================
+
+Date: 2026-09-27 Member / AI: Project Owner + ChatGPT Branch: main
+Feature: Supabase foundation, database security, storage, and developer
+access
+
+  ---------
+  SUMMARY
+  ---------
+
+The Supabase foundation for the Community Service Delivery Platform has
+been created and configured.
+
+Supabase is now the project’s database, authentication provider, storage
+system, and Row Level Security (RLS) layer.
+
+The database/storage foundation is ready for frontend authentication
+integration.
+
+The next implementation task is Supabase Auth integration: - Register -
+Login - Logout - Email confirmation handling - Forgot/reset password -
+Session restoration - Role-based redirects - Auth guards - Developer
+Mode
+
+  --------------------------------
+  SUPABASE PROJECT CONFIGURATION
+  --------------------------------
+
+A Supabase project has been created.
+
+Authentication: - Email/password authentication is intended for initial
+authentication. - GitHub Pages production URL has been configured for
+authentication redirects/site URL. - Local development redirect URLs
+should match the development server actually used by each developer.
+
+Environment configuration: - .env is used locally/server-side for
+Supabase configuration. - .env must NEVER be committed. - .env.example
+may be committed but must contain no real credentials.
+
+Expected environment variable names:
+
+SUPABASE_URL= SUPABASE_PUBLISHABLE_KEY= SUPABASE_SECRET_KEY=
+
+SECURITY: - SUPABASE_SECRET_KEY is backend/server-side only. - Never
+expose SUPABASE_SECRET_KEY in HTML or frontend JavaScript. - GitHub
+Pages/frontend code may use the Supabase project URL and publishable
+key. - RLS remains the real database security boundary for browser
+access.
+
+  ------------------------------
+  MIGRATIONS CREATED / APPLIED
+  ------------------------------
+
+The following migrations have been successfully applied to Supabase and
+should be stored in:
+
+shared/supabase/migrations/
+
+Files: 1. 001_initial_schema.sql 2. 002_storage_setup.sql 3.
+003_developer_accounts.sql
+
+All future schema/security changes should be added as new migrations. Do
+not silently edit the production database without documenting the
+change.
+
+  -----------------------------------------
+  MIGRATION 001 - INITIAL DATABASE SCHEMA
+  -----------------------------------------
+
+Created core application tables: - profiles - assistants - requests -
+donations - donation_images - assignments - reports - notifications
+
+Important relationships:
+
+auth.users -> profiles
+
+profiles -> assistants / requests / donations / reports / notifications
+
+requests + assistants -> assignments
+
+donations -> donation_images
+
+The authenticated Supabase user UUID is the trusted identity source.
+
+Do not trust a user_id supplied by frontend JavaScript when
+authorization can instead be derived from the authenticated Supabase
+session.
+
+  ----------
+  PROFILES
+  ----------
+
+profiles.id corresponds directly to auth.users.id.
+
+Current application roles: - community_user - assistant - admin -
+organisation
+
+Normal public registration MUST NOT be allowed to select or assign an
+administrator role.
+
+An automatic auth.users trigger creates a profiles row when a new
+Supabase Auth user is created.
+
+Normal signup creates: role = community_user
+
+Public signup metadata cannot promote the new user to admin.
+
+  ------------
+  ASSISTANTS
+  ------------
+
+Assistant records are stored separately from profiles.
+
+Verification status values: - pending - verified - rejected - suspended
+
+Training status values: - not_started - in_progress - completed
+
+Availability values: - available - unavailable
+
+Unverified assistants must not be allowed to accept protected service
+jobs.
+
+Assistant verification/training status must not be trusted from browser
+state alone.
+
+  ----------
+  REQUESTS
+  ----------
+
+Request types: - resource - service - problem
+
+Request status values: - open - assigned - in_progress - completed -
+cancelled
+
+The initial workflow remains:
+
+open -> assigned -> in_progress -> completed
+
+Job acceptance must eventually perform the assignment creation and
+request status change as one controlled/atomic operation.
+
+The browser has intentionally NOT been given unrestricted assignment
+creation permission.
+
+  -----------
+  DONATIONS
+  -----------
+
+Donation status values: - available - reserved - collected - expired -
+cancelled
+
+A separate donation_images table was added because a donation may
+contain multiple images.
+
+Actual image files belong in Supabase Storage. The database stores
+Storage paths/metadata rather than raw image blobs.
+
+  ---------
+  REPORTS
+  ---------
+
+The reports table exists.
+
+Official report workflow/status values have NOT yet been finalized by
+the team.
+
+Do not invent a more complex report status contract without documenting
+and coordinating the decision.
+
+  ---------------
+  NOTIFICATIONS
+  ---------------
+
+The notifications table exists.
+
+Users can access their own notifications according to RLS.
+
+Browser users are intended to update only notification read state rather
+than arbitrary notification content.
+
+  --------------------
+  ROW LEVEL SECURITY
+  --------------------
+
+RLS has been enabled on user-sensitive application tables.
+
+Policies were added for ownership and role-based access.
+
+Important security principles: - Users can access their own profile
+according to policy. - Users cannot promote themselves to admin through
+the frontend. - Users cannot change protected assistant
+verification/training fields through ordinary browser access. -
+Community users can create their own requests. - Donation ownership is
+enforced. - Assignment access is restricted. - Reports are user-owned. -
+Notifications are user-owned. - Admin access is broader where explicitly
+permitted. - Verified-assistant access is checked using trusted database
+state.
+
+Never replace database/RLS authorization with hidden frontend buttons.
+
+  -------------------------
+  MIGRATION 002 - STORAGE
+  -------------------------
+
+Created/configured these Supabase Storage buckets:
+
+1.  avatars - PUBLIC
+2.  donation-images - PUBLIC
+3.  verification-documents - PRIVATE
+
+Verification documents MUST remain private.
+
+Expected Storage path conventions:
+
+avatars//avatar.ext
+
+donation-images///image.ext
+
+verification-documents//document.ext
+
+Storage policies restrict authenticated uploads/changes to the
+appropriate user’s UUID folder.
+
+Do not expose verification documents through permanent public URLs.
+
+  ------------------------------------
+  MIGRATION 003 - DEVELOPER ACCOUNTS
+  ------------------------------------
+
+A dedicated developer_accounts table was added.
+
+Purpose: Allow trusted project developers to use a Developer Mode
+interface for testing without hard-coding developer email addresses,
+passwords, or identifiers into public frontend source code.
+
+Structure: developer_accounts - user_id - created_at
+
+developer_accounts.user_id references profiles.id.
+
+RLS is enabled.
+
+An authenticated user may check whether THEIR OWN user_id exists in
+developer_accounts.
+
+There are intentionally no public/browser INSERT, UPDATE, or DELETE
+policies for developer_accounts.
+
+A browser user MUST NOT be able to grant themselves developer access.
+
+Developer access is assigned through a trusted administrative/database
+operation.
+
+Do NOT commit developer email addresses or personal UUIDs into migration
+files.
+
+  --------------------------
+  DEVELOPER ACCOUNT DESIGN
+  --------------------------
+
+“Developer” is NOT a normal application role.
+
+Application roles remain: - community_user - assistant - admin -
+organisation
+
+Developer capability is separate.
+
+A development account may, for testing purposes, have: - profiles.role =
+admin - assistant.verification_status = verified -
+assistant.training_status = completed - assistant.availability =
+available - a row in developer_accounts
+
+This allows one trusted development account to exercise the Admin and
+Verified Assistant interfaces while Developer Mode can also display the
+Community User interface.
+
+IMPORTANT: Developer Mode must NEVER change profiles.role merely because
+the developer switches the interface being viewed.
+
+There is a critical distinction between:
+
+1.  REAL AUTHORIZATION Stored/enforced by Supabase, profiles,
+    assistants, developer_accounts, and RLS.
+
+2.  CURRENT DEVELOPER VIEW Which frontend/dashboard the developer is
+    currently testing.
+
+Changing Developer Mode view must not grant new database permissions.
+
+  ----------------------------
+  DEVELOPER MODE UX DECISION
+  ----------------------------
+
+After login:
+
+Normal users: - Load authenticated session. - Load trusted
+profile/assistant state. - Redirect to the correct normal dashboard. -
+Do not show Developer Mode.
+
+Developer-authorized users: - Detect their own row in
+developer_accounts. - May be sent to a Developer Mode selector. - May
+choose which interface to test: - Community User - Verified Assistant -
+Administrator
+
+The existing role-selection-style frontend may be repurposed for the
+Developer Mode selector if compatible with the current code.
+
+Developer users should also have a small floating Developer Mode button
+available while testing dashboards.
+
+The floating button should allow switching between Community User,
+Verified Assistant, and Administrator interfaces without logging out.
+
+This button must only be shown after trusted developer authorization has
+been confirmed.
+
+Hiding/showing this button is UX only. Supabase/RLS remains responsible
+for actual authorization.
+
+Do NOT implement developer detection by hard-coding emails. Do NOT
+hard-code a developer password. Do NOT put personal developer UUIDs into
+frontend source code.
+
+  -------------------------------------------
+  AUTHENTICATION IMPLEMENTATION - NEXT TASK
+  -------------------------------------------
+
+Authentication frontend/backend integration has NOT yet been completed.
+
+The next developer/Codex task should implement: - Supabase browser
+client - Registration - Login - Logout - Session restoration - Email
+confirmation handling - Forgot password - Reset password - Auth guards -
+Profile loading - Role-based redirects - Developer account detection -
+Developer Mode selector - Floating Developer Mode switcher
+
+Normal registration must create a normal community user.
+
+Do not allow registration forms to create: - admin - verified
+assistant - developer
+
+Those states require trusted workflows/administrative operations.
+
+  --------------------
+  EXPECTED AUTH FLOW
+  --------------------
+
+Normal user:
+
+Register -> Supabase Auth -> auth.users -> automatic profiles row ->
+role = community_user -> email confirmation if enabled -> Login ->
+Session -> Load profile -> Community User Dashboard
+
+Normal assistant workflow (future/full implementation):
+
+Community user -> Apply to become assistant -> assistant record pending
+-> training/verification -> admin approval -> verified -> assistant
+functionality available
+
+Admin:
+
+Login -> Session -> trusted profile.role = admin -> Admin Dashboard
+
+Developer:
+
+Login -> Session -> developer_accounts contains authenticated UUID ->
+Developer Mode -> choose interface to test -> floating developer
+switcher remains available
+
+  -----------------------------------
+  FRONTEND ARCHITECTURE MUST REMAIN
+  -----------------------------------
+
+Preserve the agreed project architecture: - HTML - CSS inside each HTML
+file using
+-   JavaScript in separate .js files
+-   No React/Vue/framework migration unless explicitly agreed
+-   Supabase remains database/auth/storage
+-   Node.js/Express where backend routes are required
+-   Preserve role-first project structure
+-   Shared frontend logic belongs under shared/frontend/
+-   Shared backend logic belongs under shared/backend/
+-   Supabase migrations belong under shared/supabase/migrations/
+
+Do not reorganize or rename existing files unnecessarily.
+
+  -----------------------------------------------------
+  IMPORTANT SECURITY NOTES FOR NEXT DEVELOPER / CODEX
+  -----------------------------------------------------
+
+1.  Never expose SUPABASE_SECRET_KEY in frontend code.
+2.  Never commit .env.
+3.  Never trust role information solely from localStorage.
+4.  Never allow public registration to choose admin.
+5.  Never allow public registration to mark an assistant verified.
+6.  Never allow browser users to add themselves to developer_accounts.
+7.  Developer Mode is not an authorization bypass.
+8.  RLS/database authorization remains authoritative.
+9.  Verification documents remain private.
+10. Do not weaken existing RLS simply to make frontend integration
+    easier.
+11. Do not replace trusted database checks with hidden/disabled buttons.
+12. Preserve existing status values and API/data contracts.
+
+  -------------------
+  TESTING COMPLETED
+  -------------------
+
+-   Supabase project successfully created.
+-   Migration 001 executed successfully.
+-   Migration 002 executed successfully.
+-   Core application tables were created.
+-   RLS setup executed successfully.
+-   Storage buckets were created successfully.
+-   Auth configuration/environment checks were reviewed.
+-   Automatic profile creation was smoke-tested successfully by creating
+    an Auth user and confirming the corresponding profile row.
+
+Migration 003 should be kept in source control once created/applied.
+
+Frontend authentication has not yet been implemented.
+
+  ---------------------------------
+  FILES CREATED / TO BE COMMITTED
+  ---------------------------------
+
+shared/supabase/migrations/ - 001_initial_schema.sql -
+002_storage_setup.sql - 003_developer_accounts.sql
+
+Environment: - .env LOCAL ONLY / DO NOT COMMIT - .env.example SAFE
+TEMPLATE / NO SECRET VALUES
+
+  ------------------------------------
+  KNOWN ISSUES / NOT YET IMPLEMENTED
+  ------------------------------------
+
+-   Login frontend not implemented.
+-   Registration frontend not implemented.
+-   Logout/session UI not implemented.
+-   Forgot/reset password not implemented.
+-   Role-based redirect not implemented.
+-   Developer Mode frontend not implemented.
+-   Floating developer switcher not implemented.
+-   Assistant application/approval workflow not fully implemented.
+-   Atomic assistant request acceptance operation not implemented.
+-   Real API integration for existing frontend forms is still pending.
+-   Official report status values still need team agreement.
+-   Full RLS testing with separate real-role test accounts is still
+    needed.
+
+  -----------
+  TODO NEXT
+  -----------
+
+1.  Commit migrations 001-003.
+2.  Replace/update TEAM_UPDATE_LATEST.txt with this handoff.
+3.  Give Codex the authentication + Developer Mode implementation task.
+4.  Codex must inspect current repository files before editing.
+5.  Implement Supabase Auth without changing the agreed architecture.
+6.  Test registration -> profile creation -> login -> redirect.
+7.  Test Developer Mode.
+8.  Test with normal community/assistant/admin accounts separately for
+    RLS.
+9.  Continue with the first end-to-end request/assignment workflow.
+
+  ---------------------------
+  NOTES FOR CODEX / NEXT AI
+  ---------------------------
+
+Read these before writing code:
+
+1.  MASTER_AI_TEAM_CONTEXT.txt
+2.  TEAM_UPDATE_LATEST.txt
+3.  shared/supabase/migrations/001_initial_schema.sql
+4.  shared/supabase/migrations/002_storage_setup.sql
+5.  shared/supabase/migrations/003_developer_accounts.sql
+6.  Existing frontend files and shared utilities
+
+Do not recreate the database schema. Do not invent a second
+authentication system. Do not create a custom password table. Do not
+change existing status names without coordinating/documenting it. Do not
+make Developer Mode an authorization bypass.
+
+Before editing: - State exact files to create/modify. - Inspect existing
+implementations. - Reuse existing utilities where possible.
+
+After editing: - Run JavaScript syntax checks. - Check HTML script/link
+references. - Perform authentication flow testing where possible. - List
+all files changed. - Document any database/API contract changes. -
+Update TEAM_UPDATE_LATEST.txt again.
+
+  -----------------------
+  SUGGESTED NEXT COMMIT
+  -----------------------
+
+git status git add shared/supabase/migrations/ TEAM_UPDATE_LATEST.txt
+.env.example git commit -m “Add Supabase foundation and developer
+access” git push origin main
+
+IMPORTANT: Confirm .env is NOT staged before committing.
+
+================================================================ END OF
+TEAM UPDATE
+================================================================

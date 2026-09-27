@@ -1,0 +1,290 @@
+COMMUNITY SERVICES PLATFORM — PHASE 1 TEAM UPDATE (2)
+Date: 2026-09-27
+Member / AI: Codex
+Branch: main (working tree only; no commit or push)
+Status: Authentication and Developer Mode implementation completed; live account/email/RLS acceptance verification remains required.
+
+IMPORTANT HANDOFF LOCATION
+This file is the current submission: teamdevupdates/latest txt (2).txt.
+The owner explicitly overrode references to other handoff locations/names.
+Historical teamdevupdates/MASTER_AI_TEAM_CONTEXT.txt, TEAM_UPDATE_LATEST0.txt,
+and TEAM_UPDATE_LATEST1.txt are preserved. No root TEAM_UPDATE_LATEST.txt was created.
+Those three historical files were already untracked when this task began.
+
+1. AUDIT RESULTS BEFORE CODING
+- Existing role-first structure: community-user/{frontend,backend},
+  verified-assistant/{frontend,backend}, admin/{frontend,backend},
+  shared/frontend, shared/supabase/migrations, teamdevupdates.
+- index.html was the public three-role selection page linking directly to dashboards.
+- No auth client, login/register, session restoration, auth guards, logout buttons,
+  or localStorage/sessionStorage role authorization existed in the inspected source.
+- Supabase files were migrations 001_initial_schema.sql, 002_storage_setup.sql,
+  and 003_developer_accounts.sql. No browser client existed.
+- Shared frontend utilities: navigation.js, ui.js, status.js, and extensionless
+  validation (described as validation.js in old documentation).
+- Classic scripts, relative URLs, no package manifest, bundler or framework.
+  GitHub Pages project-subdirectory navigation needed shared base-path handling.
+- Community pages: dashboard, request-help, donate, misspelled request history,
+  browse requests. Assistant: dashboard, profile, active/completed jobs, training,
+  empty available-requests and legacy dashboard. Admin: dashboard, users, requests,
+  donations, reports, verification, empty legacy dashboard.
+- Actual page names do not match the previous frontend handoff. Several browser
+  scripts sit under backend folders; route/controller files are empty placeholders.
+- Existing assistantProfile/training data is mock business UI state, not trusted auth.
+  No hard-coded role-based authentication redirects or fake login were found.
+- Several existing hrefs were broken due to hyphen/underscore/spelling differences;
+  role navigation now points to actual files without renaming them.
+- 14 pre-existing missing business script references remain (listed below).
+- README was only a title. .env existed locally and was ignored; .env.example did
+  not exist. The original .gitignore exception preceded .env.* and was ineffective.
+- SQL is authoritative: profile trigger always inserts community_user, normal users
+  cannot update role, verified assistants require verified + completed, developer
+  membership is separate and own-row SELECT is protected by RLS.
+
+2. FILES CREATED
+- .env.example
+  Safe environment variable template; no values.
+- login.html
+  Email/password login, resend confirmation, sign-out recovery action.
+- register.html
+  Public community signup with names, optional phone, password confirmation.
+- forgot-password.html
+  Generic password reset request flow.
+- reset-password.html
+  Recovery-session password update page.
+- auth-callback.html
+  Confirmation callback and invalid/expired-link handling.
+- developer.html
+  Guarded developer-only princess interface selector.
+- shared/frontend/public-config.js
+  Generated browser-safe project URL/publishable key only.
+- shared/frontend/supabase-client.js
+  One persistent Supabase browser client with config validation.
+- shared/frontend/auth-policy.js
+  Pure trusted-role/developer-view access and destination rules.
+- shared/frontend/auth.js
+  Session/user/profile/assistant/developer loading, recovery, sign-out.
+- shared/frontend/auth-guard.js
+  Fail-closed page guards, logout, history/tab rechecks.
+- shared/frontend/auth-pages.js
+  Auth forms, validation, callbacks and recovery logic.
+- shared/frontend/developer-mode.js
+  Developer-only view selector and accessible floating dialog.
+- shared/scripts/configure-public.cjs
+  Allowlisted public config generation from local environment.
+- shared/tests/auth.test.cjs
+  9 authorization/session/navigation unit tests.
+- shared/tests/auth-browser.cjs
+  23 browser scenarios; isolated loopback server, mocked accounts.
+- shared/tests/check-auth-static.cjs
+  Syntax, paths, guards, duplicate scripts and frontend secrets checks.
+- teamdevupdates/latest txt (2).txt
+  This Phase 1 team submission and accurate verification record.
+
+3. FILES MODIFIED
+- .gitignore
+  Correct rule order so .env stays ignored and .env.example is trackable; ignore local dependencies/test output.
+- README.md
+  Configuration, email redirects, access matrix, developer setup, tests, limitations and actual handoff location.
+- admin/frontend/admin_dashboard.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- admin/frontend/admin_donations.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- admin/frontend/admin_reports.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- admin/frontend/admin_requests.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- admin/frontend/admin_users.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- admin/frontend/admin_verify_assistants.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- admin/frontend/dashboard.html
+  Guard formerly empty legacy dashboard URL and redirect to canonical role dashboard.
+- community-user/frontend/commubity_user_requests.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- community-user/frontend/community-user_dashboard.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- community-user/frontend/community-user_donate.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- community-user/frontend/community-user_request-help.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- community-user/frontend/community_user_browse_requests.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- index.html
+  Replace public role-selection links with Login/Register; preserve existing branding.
+- shared/frontend/navigation.js
+  Shared base-path-aware URLs and redirects; support deferred script loading.
+- verified-assistant/frontend/dashboard.html
+  Guard formerly empty legacy dashboard URL and redirect to canonical role dashboard.
+- verified-assistant/frontend/verified_assistant_active_jobs.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- verified-assistant/frontend/verified_assistant_availible_requests.html
+  Guard formerly empty available-requests page and provide honest Phase 2 placeholder.
+- verified-assistant/frontend/verified_assistant_dashboard.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- verified-assistant/frontend/verified_assistant_profile.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- verified-assistant/frontend/verified_assistants_complefed_jobs.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+- verified-assistant/frontend/verigied_assistant_training.html
+  Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
+The admin dashboard's malformed opening/trailing HTML and admin users closing tag
+were normalized while inserting the guard. CSS remains inside each HTML file.
+
+4. FILES DELETED
+None. Existing business JavaScript/backend files and SQL migrations are unchanged.
+
+5. AUTHENTICATION IMPLEMENTED
+Registration: required names/email/password; optional phone; 8-character minimum;
+matching confirmation; native validation and accessible labels/autocomplete;
+in-flight submission protection; only first_name/last_name/phone metadata sent.
+Existing trigger owns profile creation and default community_user role.
+With confirmation enabled, show check-email state; with an immediate session,
+load trusted state and route. Duplicate-account responses stay generic.
+Login: signInWithPassword; invalid/unconfirmed/network/rate-limit errors; verify
+identity using getUser; load trusted profile, assistant state and own developer row.
+Logout: SDK signOut(scope local), hide protected UI, clear developer/recovery state,
+return to login. This signs out this browser; other devices are not explicitly revoked.
+Session: SDK persistence/refresh; centralized state loading; auth callbacks avoid
+async SDK calls inside the SDK lock; history/foreground pages recheck access.
+Email confirmation: dedicated callback, SDK implicit flow, URL cleanup, invalid-link
+messages, resend action on login. Standard Supabase ConfirmationURL templates expected.
+Forgot password: generic check-inbox success, deployed base-aware reset redirect.
+Reset: PASSWORD_RECOVERY event, user-bound 30-minute recovery UI state, refresh
+support, updateUser password change, validation and sign-out on success. A normal
+session alone does not show this form. Recovery marker grants no database permission.
+
+6. ROUTING / GUARDS / ACCESS MATRIX
+Public: index, login, register, forgot-password, confirmation shell, recovery shell.
+Community: all community-user HTML pages use trusted community destination access.
+Assistant: all assistant HTML pages require verified AND completed assistant state.
+Admin: all admin HTML pages require trusted profile role admin.
+Developer selector/switcher: own authenticated UUID must exist in developer_accounts.
+Developer-selected interfaces may be previewed; RLS still uses the actual account.
+Normal routing: admin first; otherwise verified/completed assistant; otherwise
+community (including pending assistants/organisation role with no separate UI yet).
+Missing session routes to login. Wrong interface routes to trusted destination.
+Query failure/missing profile/unsupported role leaves protected content hidden and
+shows retry/sign-out controls. No privilege is inferred from query strings or storage.
+Navigation is derived from shared/frontend/navigation.js URL, preserving /Community_Services/.
+No untrusted return URL is accepted. Empty legacy dashboard URLs are guarded aliases.
+
+7. DEVELOPER MODE
+First developer login -> developer.html unless a valid user-bound sessionStorage
+view is remembered. Key: community-services.developer-view. Values: community_user,
+assistant, admin, or normal (Exit Developer Mode). Developer membership is always
+verified before a stored view is honored. Non-developers gain nothing by forging it.
+Selection changes navigation/presentation only. There are no profile role writes.
+Floating left-bottom bow button opens a native dialog: keyboard focus containment,
+Escape, close, focus restoration, mobile sizing. Exit returns to trusted real-role
+interface; it does not sign out, delete membership or change actual authorization.
+Selector rebuilding is idempotent after a foreground/access recheck.
+Developer account provisioning remains a trusted SQL/admin task; README has a generic
+YOUR_USER_UUID example. No actual developer identity is committed.
+
+8. DEVELOPER PRINCESS SIDE QUEST
+Pink, purple, lavender gradients, flowers, bows, hearts, sparkles, rounded cards,
+glitter-like dots and playful shadows. Dark readable text, visible keyboard focus,
+responsive dialog, and reduced-motion-aware transitions. Theme is confined to
+selector/developer controls. Normal app/auth pages retain professional styling.
+
+9. SECURITY REVIEW
+SUPABASE_SECRET_KEY exposed to frontend? NO.
+Hard-coded developer email? NO.
+Hard-coded developer UUID? NO.
+Hard-coded password? NO.
+Can public registration create admin? NO (existing trigger fixes the initial role).
+Can public registration create developer? NO (no browser membership mutations/policies).
+Can public registration create verified assistant? NO.
+Can localStorage grant Developer Mode? NO.
+Does Developer Mode modify profiles.role? NO.
+These are code/schema review conclusions; live RLS enforcement still needs real-account tests.
+No database/storage changes, new migrations, service keys or backend endpoints.
+Only URL + modern publishable key are emitted by the config generator. .env remains
+ignored and untracked. Frontend secrets scan passes. No passwords are logged.
+Static HTML itself is public; frontend guards are UX/security-in-depth, never the
+real data boundary. RLS remains authoritative. Developer previews are not RLS tests.
+
+10. TESTS ACTUALLY RUN
+- node --test shared/tests/auth.test.cjs: 9 passed.
+  Anonymous denial; forged view denial; assistant status combinations; developer
+  views/exit; authenticated query identity; all authorization query failures;
+  missing profile; view identity binding/logout; recovery; root/project-base URLs.
+- node shared/tests/auth-browser.cjs: 23 browser scenarios passed in headless Edge
+  at mobile viewport 390x844. Playwright came from the bundled runtime via NODE_PATH;
+  no dependency installation or package-lock was added to the repository.
+  21 scenarios use a mocked SDK; two use actual Supabase JS 2.117.2 with mocked HTTP
+  to test signup/recovery callback parsing and event timing. No live account writes.
+  Covered anonymous role/developer URLs, forged views, refresh, pending assistant,
+  trusted admin/assistant routes/logout, developer all views/exit/remembering/logout,
+  duplicate-selector prevention, Escape/focus/mobile width, authorization failures,
+  registration validation/metadata, login success/errors, forgot reset URL, ordinary
+  session recovery denial, recovery refresh/update/sign-out, valid/expired callbacks.
+  No JavaScript page errors occurred in those scenarios. Known missing legacy scripts
+  still cause network 404s; they are not claimed fixed by these auth tests.
+- node shared/tests/check-auth-static.cjs: passed; node --check on all 39 JS/CJS
+  files and checks across all 26 HTML files. No new missing src/href, duplicate scripts,
+  root-relative navigation or frontend private key references. 14 legacy gaps reported.
+- git diff --check: passed.
+- git check-ignore verified .env ignored and .env.example not ignored.
+- git ls-files .env: no output (.env is not tracked).
+- Read-only connectivity: pinned SDK CDN HTTP 200; configured Supabase /auth/v1/settings
+  HTTP 200; email enabled=true, signup disabled=false, mailer autoconfirm=false.
+  This establishes connectivity/config visibility, not successful live authentication.
+- Reviewed diff for scope, auth boundaries, paths and secret exposure.
+
+11. MANUAL / LIVE TESTS STILL REQUIRED
+Implementation completed; these live Supabase tests require manual verification:
+- New signup, duplicate email behavior, actual email delivery, default profile role,
+  trigger execution and inability to self-assign admin/developer/verified assistant.
+- Real confirmed/unconfirmed login, all role accounts and developer memberships.
+- Actual confirmation/reset URLs at GitHub Pages and localhost; expired/used emails;
+  custom project policies, password constraints, actual new-password login.
+- Real session expiry/refresh, cross-tab sign-out, revocation and deployed RLS/grants.
+- Developer access with actual own-row SELECT; real accounts cannot mutate membership.
+- Real browser navigation, denied URLs and responsive/accessibility checks beyond
+  the automated mobile viewport. Separate community/assistant/admin accounts for RLS.
+- Real email confirmation disabled flow (current project requires confirmation).
+No live signup, password change, email send, privilege change or data mutation was performed.
+
+12. KNOWN LIMITATIONS / OUT-OF-SCOPE WORK
+All business/data integration remains NOT started in this phase: requests,
+assignments, donations/images, reports, notifications, assistant applications,
+training/verification workflows, admin verification actions, avatars, organisations,
+dashboard statistics and other Phase 2 workflows. Existing placeholders remain.
+Migration 003 relies on Supabase default table SELECT grants; confirm deployed grants
+with a real account. A denied developer query fails closed; no bypass was introduced.
+SDK loaded from pinned external CDN; browser must reach it and Supabase. Session
+storage must be available to remember developer views across pages. Standard implicit
+email templates supported; token-hash-only custom templates would need adaptation.
+Existing placeholder assistant status displays are not the authorization source.
+
+PRE-EXISTING MISSING BUSINESS SCRIPT REFERENCES (unchanged)
+admin/frontend/admin_dashboard.html -> admin_dashboard.js
+admin/frontend/admin_donations.html -> admin_donations.js
+admin/frontend/admin_reports.html -> admin_reports.js
+admin/frontend/admin_requests.html -> admin_requests.js
+admin/frontend/admin_users.html -> admin_users.js
+admin/frontend/admin_verify_assistants.html -> admin_verify-assistants.js
+community-user/frontend/commubity_user_requests.html -> community-user_requests.js
+community-user/frontend/community-user_request-help.html -> community-user_request-help.js
+community-user/frontend/community_user_browse_requests.html -> community-user_browse-requests.js
+verified-assistant/frontend/verified_assistants_complefed_jobs.html -> verified-assistant_completed-jobs.js
+verified-assistant/frontend/verified_assistant_active_jobs.html -> verified-assistant_active-jobs.js
+verified-assistant/frontend/verified_assistant_profile.html -> ../../shared/frontend/validation.js
+verified-assistant/frontend/verified_assistant_profile.html -> verified-assistant_profile.js
+verified-assistant/frontend/verigied_assistant_training.html -> verified-assistant_training.js
+Do not blindly remap these: some backend-named files contain mismatched page code.
+
+13. SETUP / TEAM SUBMISSION
+See README.md for public configuration generation, exact redirect URL patterns,
+trusted developer provisioning and reproducible tests. This new update is under
+teamdevupdates as requested; historical Supabase context has not been removed.
+Generated browser config contains public values only and must be deployed alongside
+HTML. Static GitHub Pages cannot read .env. No commit, push or deployment performed.
+
+14. RECOMMENDED NEXT PHASE (NOT IMPLEMENTED)
+First complete the live auth/RLS acceptance checklist. Then reconcile the legacy
+business script/path baseline and agree on a request/assignment contract. Build the
+first service-request workflow with atomic assistant acceptance/assignment creation
+and lifecycle transitions enforced by reviewed database/backend rules.

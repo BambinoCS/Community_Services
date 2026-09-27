@@ -1,0 +1,204 @@
+COMMUNITY SERVICE DELIVERY PLATFORM
+FRONTEND IMPLEMENTATION - TEAM UPDATE
+================================================================
+
+Date: 2026-09-26
+Member / AI: Claude (frontend implementation pass)
+Branch: main
+Feature: Complete remaining frontend for Community User, Verified
+         Assistant, and Admin roles
+
+----------------------------------------------------------------
+WHAT WE WORKED ON
+----------------------------------------------------------------
+
+Started from the existing repo (which only had partial Community
+User pages, and empty stub files for Verified Assistant / Admin).
+Inspected everything first, preserved all existing working code,
+and then built out the remaining frontend for all three user roles
+plus a small shared JS utility layer, following the architecture
+already in place (HTML + inline <style> + separate .js files, no
+frameworks, ready for later Node/Express + Supabase integration).
+
+Nothing here is connected to a real backend yet. Every form/action
+validates on the frontend, builds the payload the backend will
+eventually expect, and then shows a clear "validated, not yet
+submitted" message instead of pretending anything was saved.
+
+----------------------------------------------------------------
+FILES CREATED
+----------------------------------------------------------------
+shared/frontend/
+  - status.js       (official status values + friendly labels/badges)
+  - validation.js    (required/length/number/date/file validators)
+  - ui.js            (banners, empty/error/loading states, modals)
+  - navigation.js    (active nav highlight, confirm-dialog wrapper)
+
+community-user/frontend/
+  - community-user_requests.html / .js          (My Requests page)
+  - community-user_browse-requests.html / .js    (Browse Requests page)
+
+verified-assistant/frontend/
+  - verified-assistant_dashboard.html / .js
+  - verified-assistant_available-requests.html / .js
+  - verified-assistant_active-jobs.html / .js
+  - verified-assistant_completed-jobs.html / .js
+  - verified-assistant_profile.html / .js
+  - verified-assistant_training.html / .js
+
+admin/frontend/
+  - admin_dashboard.html / .js
+  - admin_verify-assistants.html / .js
+  - admin_users.html / .js
+  - admin_requests.html / .js
+  - admin_donations.html / .js
+  - admin_reports.html / .js
+
+----------------------------------------------------------------
+FILES MODIFIED
+----------------------------------------------------------------
+- community-user_dashboard.html / .js
+  Added profile summary, active/recent requests, donation activity,
+  notifications, quick actions, and a proper nav bar.
+
+- community-user_request-help.html
+  Added working modals for Report a Problem, Request Service,
+  Request New Items, and a Helpline info panel.
+
+- community-user_request-help.js
+  IMPORTANT: this file was sitting at the repo root and was NOT
+  being loaded by the HTML (broken script reference). Moved it into
+  community-user/frontend/ and rewrote it with full validation logic
+  for all three workflows.
+
+- community-user_donate.html / .js
+  Added multi-image preview, remove-image button, file type/size
+  validation, and clearer error/success states.
+
+----------------------------------------------------------------
+FILES DELIBERATELY LEFT UNCHANGED
+----------------------------------------------------------------
+- All */backend/*.js controller and route files (still empty
+  placeholders, not touched)
+- README.md
+- .env.example / .gitignore
+
+----------------------------------------------------------------
+FEATURES COMPLETED (FRONTEND ONLY)
+----------------------------------------------------------------
+- Full client-side validation on every form (required fields, max
+  description length, positive integer quantities, date-not-in-past,
+  date range checks, image type/size checks)
+- Consistent status badges using ONLY the official lowercase DB
+  values from MASTER_AI_TEAM_CONTEXT.txt (open, assigned,
+  in_progress, completed, cancelled, pending, verified, rejected,
+  suspended, not_started, available, unavailable, etc.) with
+  human-readable labels layered on top
+- Empty / loading / error / success states everywhere, using the
+  exact wording requested (e.g. "No active requests yet.",
+  "No statistics available yet.", "No community requests are
+  currently available.")
+- Assistant verification gating on "Accept Request" (frontend UX
+  only - clearly noted that backend/RLS must enforce the same rule)
+- Confirmation dialogs before any status-changing action (start job,
+  complete job, approve/reject/suspend assistant, cancel request)
+- Assistant profile page shows verification/training STATUS only -
+  no documents are ever displayed
+- Admin dashboard shows "No statistics available yet" instead of
+  fake numbers; Admin Requests page only allows View + Cancel (no
+  arbitrary status changes)
+
+----------------------------------------------------------------
+BACKEND / API DEPENDENCIES (NOT YET CONNECTED)
+----------------------------------------------------------------
+- POST /api/reports          (Report a Problem)
+- POST /api/requests          (Request Service / Request New Items)
+- POST /api/donations         (Donate form)
+- POST /api/assignments       (Accept Request)
+- PATCH /api/requests/:id     (status transitions: assigned ->
+                                in_progress -> completed / cancelled)
+- PATCH /api/assistants/:id   (verification status, availability,
+                                training status)
+- Supabase Storage buckets for donation images and assistant
+  profile pictures
+- GET endpoints for every list/dashboard/admin view (currently all
+  start from empty arrays with a TODO comment above them)
+- Supabase Auth + role-based redirect (login -> session -> profile
+  -> role -> redirect) is not implemented yet
+
+Every place a real API call will eventually go has a
+"// TODO: connect to <METHOD> /api/..." comment directly above it,
+so the next person (human or AI) can search for "TODO: connect to"
+to find every integration point.
+
+----------------------------------------------------------------
+DATA CONTRACTS (UNCHANGED)
+----------------------------------------------------------------
+No field names were changed. Payloads still match
+MASTER_AI_TEAM_CONTEXT.txt:
+
+  requests:    { requestType, category, description, location,
+                 preferredDate, preferredTime, urgency,
+                 additionalInfo }
+
+  donations:   { itemName, category, description, quantity,
+                 location, availableFrom, availableUntil }
+
+  assignments: { requestId, assistantId }
+
+----------------------------------------------------------------
+KNOWN ISSUES
+----------------------------------------------------------------
+- Old empty stub files (verified-assistant/frontend/dashboard.html,
+  .js, .css and admin/frontend/dashboard.html) were removed and
+  replaced with correctly-named, non-empty versions since they were
+  0 bytes and not referenced anywhere.
+- Report STATUS values are intentionally left generic (no status
+  filter on the Admin Reports page) since those values have not yet
+  been agreed with the backend team.
+- No live browser/console testing was possible in this environment -
+  only static checks were run (see Testing below). A manual
+  click-through pass in an actual browser is still recommended.
+
+----------------------------------------------------------------
+TESTING PERFORMED
+----------------------------------------------------------------
+- Verified all src/href references across all 17 HTML files resolve
+  to real files (no broken links or missing scripts)
+- Verified every <style> tag is balanced and every file has a valid
+  <!DOCTYPE>
+- Ran `node --check` against every .js file - all pass with no
+  syntax errors
+
+Not yet done: manual in-browser testing, mobile device testing,
+accessibility audit with a screen reader.
+
+----------------------------------------------------------------
+TODO NEXT
+----------------------------------------------------------------
+1. Wire up Supabase Auth and role-based redirect
+2. Connect all TODO-marked fetch() calls to real endpoints
+3. Agree on official report status values with the backend team
+4. Manual cross-browser / mobile QA pass
+5. Wire Supabase Storage for donation images and profile pictures
+
+----------------------------------------------------------------
+DECISIONS MADE
+----------------------------------------------------------------
+- Put shared logic (status labels, validation, UI helpers, nav
+  highlighting) into shared/frontend/ rather than duplicating it
+  across 17 pages, per the "reuse before duplicating" rule
+- Left report status handling unstructured pending backend agreement
+  rather than inventing status values
+
+----------------------------------------------------------------
+GIT COMMANDS
+----------------------------------------------------------------
+git status
+git add .
+git commit -m "Complete remaining frontend features for Community User, Verified Assistant, and Admin roles"
+git push
+
+================================================================
+END OF UPDATE
+================================================================

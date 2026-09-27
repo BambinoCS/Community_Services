@@ -23,4 +23,12 @@ function confirmAction(message) {
   return window.confirm(message);
 }
 
-document.addEventListener("DOMContentLoaded", highlightActiveNav);
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", highlightActiveNav);
+else highlightActiveNav();
+
+// Resolve from this script, not the domain root: supports GitHub project Pages.
+window.AppNavigation = Object.freeze({
+  base: new URL("../../", document.currentScript.src),
+  url(path) { return new URL(path, this.base).href; },
+  go(path) { window.location.replace(this.url(path)); }
+});

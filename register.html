@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Join your community | Community Services</title>
+<style>*{box-sizing:border-box} body{margin:0;font:16px/1.6 Arial,Helvetica,sans-serif;color:#1f2937;background:#f4f6f8} header{background:white;padding:20px 28px;border-bottom:1px solid #e5e7eb} header a{color:#111827;text-decoration:none;font-weight:bold} main.auth-card{width:min(480px,calc(100% - 32px));margin:40px auto;background:white;padding:32px;border-radius:18px;box-shadow:0 8px 24px #0000000d} h1{line-height:1.2;font-size:2rem} label{display:block;font-weight:600;margin-top:16px} input{width:100%;padding:12px;border:1px solid #9ca3af;border-radius:8px;font:inherit} button,.primary-link{display:inline-block;padding:12px 18px;border:0;border-radius:8px;background:#111827;color:#fff;cursor:pointer;font:inherit;text-decoration:none} form button{width:100%;margin-top:22px} button.secondary{background:#e5e7eb;color:#111827;margin-top:12px} button:disabled{opacity:.6;cursor:wait} a{color:#1d4ed8} :focus-visible{outline:3px solid #2563eb;outline-offset:3px} #auth-message{white-space:pre-line;color:#1f2937;margin:18px 0} .links{display:flex;flex-wrap:wrap;gap:16px;margin-top:20px} .hint{color:#4b5563;font-size:.9rem} [hidden]{display:none!important}</style>
+<script defer src="shared/frontend/navigation.js">
+</script>
+  <script defer src="shared/frontend/public-config.js">
+</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js">
+</script>
+  <script defer src="shared/frontend/supabase-client.js">
+</script>
+  <script defer src="shared/frontend/auth-policy.js">
+</script>
+  <script defer src="shared/frontend/auth.js">
+</script>
+  <script defer src="shared/frontend/auth-pages.js">
+</script>
+</head>
+<body data-auth-page="register">
+<header>
+<a href="index.html">Community Services Platform</a>
+</header>
+<main class="auth-card">
+<h1>Join your community</h1>
+<p>Create an account to request help and support your community.</p>
+<p id="auth-message" role="status" aria-live="polite">
+</p>
+<form>
+<label for="first_name">First name</label>
+<input id="first_name" name="first_name" type="text" autocomplete="given-name" required maxlength="100">
+<label for="last_name">Last name</label>
+<input id="last_name" name="last_name" type="text" autocomplete="family-name" required maxlength="100">
+<label for="email">Email</label>
+<input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
+<label for="phone">Phone (optional)</label>
+<input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="30">
+<label for="password">Password</label>
+<input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" aria-describedby="password-hint">
+<p id="password-hint" class="hint">Use at least 8 characters. A longer, unique password is best.</p>
+<label for="confirm">Confirm password</label>
+<input id="confirm" name="confirm" type="password" autocomplete="new-password" required minlength="8">
+<button type="submit">Create account</button>
+</form>
+<div class="links">
+<a href="login.html">Sign in</a>
+<a href="register.html">Register</a>
+<a href="forgot-password.html">Reset password</a>
+</div>
+<noscript>
+<p>Enable JavaScript to use authentication.</p>
+</noscript>
+</main>
+</body>
+</html>
