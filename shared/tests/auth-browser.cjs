@@ -41,9 +41,20 @@ const sdkMock = `(() => {
    async updateUser(){window.testCalls.push({method:'updatePassword'});return {};},
    async signOut(){save(null);cb('SIGNED_OUT',null);return {};}
   },
-  from(table){return {select(){return this;},eq(){return this;},async maybeSingle(){
+  storage:{from(bucket){return {
+    getPublicUrl(objectPath){return {data:{publicUrl:'https://images.example.invalid/'+objectPath}};},
+    async upload(objectPath,file,options){window.testCalls.push({method:'upload',bucket,objectPath,type:file.type,options});
+      return scenario.uploadError ? {error:{message:'denied'}} : {data:{path:objectPath}};}
+  };}},
+  from(table){let patch, target;return {select(){return this;},eq(column,id){target=id;return this;},
+   update(data){patch=data;return this;},
+   async single(){window.testCalls.push({method:'profileUpdate',table,target,patch});
+    if(scenario.saveError)return {error:{message:'denied'}};
+    const profile={id:identity.id,role:scenario.role||'community_user',...JSON.parse(sessionStorage.getItem('test-profile')||'{}'),...patch};
+    sessionStorage.setItem('test-profile',JSON.stringify(profile));return {data:profile};},
+   async maybeSingle(){
     if(scenario.failTable===table)return {error:{message:'private detail'}};
-    return {data: table==='profiles' ? (scenario.missingProfile?null:{id:identity.id,role:scenario.role||'community_user',first_name:'Test',last_name:'Member'}) :
+    return {data: table==='profiles' ? (scenario.missingProfile?null:{id:identity.id,role:scenario.role||'community_user',first_name:'Test',last_name:'Member',...JSON.parse(sessionStorage.getItem('test-profile')||'{}')}) :
       table==='assistants' ? scenario.assistant||null : scenario.developer ? {user_id:identity.id} : null};
   }}}
  })};
@@ -98,7 +109,7 @@ const server = http.createServer((req, res) => {
   const open = (page, file) => page.goto(base + file);
   const shown = async page => { await page.locator('#protected-content').waitFor({ state: 'visible' }); };
   try {
-    for (const file of [...Object.values(policy.destinations), 'developer.html']) {
+    for (const file of [...Object.values(policy.destinations), 'developer.html', 'profile.html']) {
       await scenario('anonymous denied: ' + file, {}, async page => {
         await open(page, file); await page.waitForURL(base + 'login.html');
       });
@@ -201,6 +212,52 @@ const server = http.createServer((req, res) => {
       await page.getByText('This email link is invalid or expired.', { exact: false }).waitFor();
       assert.equal(new URL(page.url()).hash, '');
     });
+    await scenario('profile navigation, own details save, refresh and unsaved changes', {signedIn:true}, async page => {
+      await open(page, policy.destinations.community_user); await shown(page);
+      await page.getByRole('button',{name:'Profile',exact:true}).click(); await page.waitForURL(base+'profile.html');
+      await page.locator('#first_name:enabled').waitFor();
+      assert.equal(await page.locator('#first_name').inputValue(),'Test');
+      await page.locator('#first_name').fill('Updated'); await page.locator('#phone').fill('+27 123 456 789');
+      await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange'))); await shown(page);
+      assert.equal(await page.locator('#first_name').inputValue(),'Updated');
+      await page.locator('#save-profile').click(); await page.getByText('Your profile has been saved.',{exact:true}).waitFor();
+      const call=await page.evaluate(()=>testCalls.find(c=>c.method==='profileUpdate'));
+      assert.equal(call.target,'test-user'); assert.deepEqual(Object.keys(call.patch).sort(),['first_name','last_name','phone']);
+      await page.reload(); await page.locator('#first_name:enabled').waitFor();
+      assert.equal(await page.locator('#first_name').inputValue(),'Updated');
+      await page.locator('#first_name').fill('Unsaved'); await page.locator('#cancel-profile').click();
+      assert.equal(await page.locator('#first_name').inputValue(),'Updated');
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
+      await page.screenshot({path:path.join(root,'test-results/profile-mobile.png'),fullPage:true});
+    });
+    const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB1cAAAAASUVORK5CYII=','base64');
+    for(const failure of [null,'uploadError','saveError']) {
+      await scenario('profile photo upload: '+(failure||'success'), {signedIn:true,[failure||'success']:true},async page=>{
+        await open(page,'profile.html'); await page.locator('#first_name:enabled').waitFor();
+        await page.locator('#avatar').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:png});
+        await page.getByText('Photo selected.',{exact:false}).waitFor();
+        await page.locator('#save-profile').click();
+        await page.getByText(failure==='uploadError'?'Your photo could not be uploaded.':failure==='saveError'?'Your profile could not be saved.':'Your profile has been saved.',{exact:false}).waitFor();
+        const calls=await page.evaluate(()=>testCalls);
+        const upload=calls.find(c=>c.method==='upload');assert.equal(upload.bucket,'avatars');
+        assert.ok(upload.objectPath.startsWith('test-user/'));assert.equal(upload.options.upsert,false);
+        if(failure==='uploadError')assert.equal(calls.some(c=>c.method==='profileUpdate'),false);
+        if(!failure){await page.locator('#remove-photo').click();await page.locator('#save-profile').click();
+          await page.getByText('Your profile has been saved.',{exact:true}).waitFor();
+          assert.equal(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('test-profile')).avatar_path),null);}
+      });
+    }
+    await scenario('invalid avatar files never upload', {signedIn:true},async page=>{
+      await open(page,'profile.html'); await page.locator('#first_name:enabled').waitFor();
+      for(const file of [{name:'file.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg/>')},
+        {name:'large.png',mimeType:'image/png',buffer:Buffer.alloc(5*1024*1024+1)},
+        {name:'broken.png',mimeType:'image/png',buffer:Buffer.from('not an image')}]) {
+        await page.locator('#avatar').setInputFiles(file);
+        await page.locator('#profile-message').filter({hasText:file.name==='broken.png'?'could not be read':'no larger than 5 MB'}).waitFor();
+      }
+      assert.equal(await page.evaluate(()=>testCalls.length),0);
+    });
     // Exercise the pinned SDK's real implicit callback parsing/event ordering against mocked HTTP.
     const response = await fetch('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', { signal: AbortSignal.timeout(20000) });
     assert.ok(response.ok); actualSDK = await response.text();
@@ -222,6 +279,6 @@ const server = http.createServer((req, res) => {
         }
       });
     }
-    console.log(`${count} browser scenarios passed (21 mocked SDK, 2 real SDK with mocked HTTP). These are not live account tests.`);
+    console.log(`${count} browser scenarios passed (including 2 real SDK with mocked HTTP). These are not live account tests.`);
   } finally { await browser.close(); server.close(); }
 })().catch(error => { console.error(error); server.close(); process.exitCode = 1; });

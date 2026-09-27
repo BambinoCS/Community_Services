@@ -48,7 +48,7 @@
   });
   picker.addEventListener('change', async () => {
     const file = picker.files[0];
-    clearSelection(); savedPhoto(); status.textContent = '';
+    clearSelection(); submit.disabled = false; savedPhoto(); status.textContent = '';
     if (!file) return;
     if (!types[file.type] || file.size === 0 || file.size > 5 * 1024 * 1024) {
       status.textContent = 'Choose a JPG, PNG or WebP image no larger than 5 MB.'; return;

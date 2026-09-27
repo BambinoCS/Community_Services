@@ -1,5 +1,27 @@
 # Community Services
 
+## Personal profile (follow-up)
+
+The Profile button beside Sign out opens `profile.html` for every authenticated
+role. Users can edit their own first name, last name and optional phone number,
+and upload, replace or remove their profile picture. Email is displayed read-only.
+Developer Mode still edits the actual signed-in account.
+
+Pictures use the existing public `avatars` bucket (JPG/PNG/WebP, maximum 5 MB).
+Uploads are stored under the authenticated UUID with a unique filename; the
+profile stores `avatar_path`. Save only updates the existing permitted profile
+columns. No schema or role changes are needed. Image preview, validation, cancel,
+save feedback and error handling are included.
+
+Storage upload and profile update are separate operations. Old/unlinked images
+are retained; a failed profile update can leave an unlinked upload. Removing a
+picture clears the profile reference, not the stored object. A future storage
+cleanup should handle these files. Live profile/Storage RLS checks remain required.
+
+The follow-up handoff is `teamdevupdates/TEAM_UPDATE_LATEST3.txt`; the original Phase 1
+handoff has been renamed to `teamdevupdates/TEAM_UPDATE_LATEST2.txt` in this checkout.
+The Phase 1 notes below describe the earlier scope before this profile follow-up.
+
 HTML pages with inline CSS, separate JavaScript, and Supabase Auth/PostgreSQL/RLS.
 Phase 1 implements authentication and Developer Mode only. Business features are
 still placeholders. No database migrations or backend endpoints were added.
@@ -153,7 +175,7 @@ Existing assistant status displays can still show placeholder data, independent
 of the trusted authorization checks. No new business write operations were added.
 
 Team handoffs live in **`teamdevupdates/`**. The current Phase 1 submission is
-**`teamdevupdates/latest txt (2).txt`**; historical updates 0/1 and the master context
+**`teamdevupdates/TEAM_UPDATE_LATEST3.txt`**; historical updates 0/1 and the master context
 remain intact. Older documents mentioning `shared/docs` or a root
 `TEAM_UPDATE_LATEST.txt` are stale.
 

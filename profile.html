@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Profile | Community Services</title>
+<style>*{box-sizing:border-box} body{margin:0;font:16px/1.6 Arial,Helvetica,sans-serif;color:#1f2937;background:#f4f6f8} header{background:white;padding:20px 28px;border-bottom:1px solid #e5e7eb} header a{color:#111827;text-decoration:none;font-weight:bold} main.auth-card{width:min(480px,calc(100% - 32px));margin:40px auto;background:white;padding:32px;border-radius:18px;box-shadow:0 8px 24px #0000000d} h1{line-height:1.2;font-size:2rem} label{display:block;font-weight:600;margin-top:16px} input{width:100%;padding:12px;border:1px solid #9ca3af;border-radius:8px;font:inherit} button,.primary-link{display:inline-block;padding:12px 18px;border:0;border-radius:8px;background:#111827;color:#fff;cursor:pointer;font:inherit;text-decoration:none} form button{width:100%;margin-top:22px} button.secondary{background:#e5e7eb;color:#111827;margin-top:12px} button:disabled{opacity:.6;cursor:wait} a{color:#1d4ed8} :focus-visible{outline:3px solid #2563eb;outline-offset:3px} #auth-message{white-space:pre-line;color:#1f2937;margin:18px 0} .links{display:flex;flex-wrap:wrap;gap:16px;margin-top:20px} .hint{color:#4b5563;font-size:.9rem} [hidden]{display:none!important}
+
+[hidden] { display:none !important; }
+.auth-shell { font:16px/1.6 Arial,sans-serif; color:#1f2937; background:#f4f6f8; padding:32px; min-height:100vh; }
+.auth-shell button,.auth-account button { padding:10px 16px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#111827; cursor:pointer; }
+.auth-account { display:flex; gap:12px; justify-content:flex-end; align-items:center; padding:10px 24px; background:#fff; border-bottom:1px solid #e5e7eb; font:14px Arial,sans-serif; }
+.auth-account span { margin-right:auto; }
+.dev-princess { color:#542064; font:16px/1.6 Arial,sans-serif; }
+.dev-princess button { display:block; width:100%; margin:12px 0; padding:14px 20px; border:2px solid #b7358b; border-radius:28px; background:linear-gradient(135deg,#ffe0ef,#e8d9ff); color:#542064; font:700 16px/1.4 Arial,sans-serif; cursor:pointer; box-shadow:0 5px 16px #c9469d33; }
+.dev-princess button:hover { background:#f9c3e7; }
+.dev-princess button:focus-visible { outline:3px solid #542064; outline-offset:4px; }
+.dev-princess button:disabled { opacity:.6; cursor:wait; }
+.dev-princess .dev-floating { position:fixed; bottom:16px; left:16px; width:auto; z-index:100; margin:0; }
+.dev-princess .dev-dialog { margin:auto; padding:28px; width:min(460px,calc(100% - 32px)); max-height:85vh; overflow:auto; border:3px solid #cb5ba9; border-radius:32px; background:radial-gradient(circle at 15% 10%,#fff 0 2px,transparent 3px),linear-gradient(135deg,#fff0f8,#eee1ff); background-size:24px 24px,auto; color:#542064; box-shadow:0 16px 80px #7e227c55; }
+.dev-dialog::backdrop { background:#29143199; }
+.dev-dialog p { margin:12px 0; }
+.dev-selector { max-width:720px; margin:40px auto; padding:32px; border:3px solid #cb5ba9; border-radius:40px; background:linear-gradient(140deg,#fff0f8,#eadbff); box-shadow:0 18px 60px #cb5ba933; text-align:center; }
+.dev-selector h1 { font-size:clamp(1.6rem,5vw,2.5rem); }
+.dev-selector .flowers { font-size:2rem; letter-spacing:.3em; }
+@media (prefers-reduced-motion:no-preference) { .dev-princess button { transition:background .15s,box-shadow .15s; } }
+@media (max-width:480px) { .dev-selector { margin:20px 12px; padding:20px; } .auth-account { flex-wrap:wrap; } }
+
+.profile-page { width:min(1000px,92%); margin:36px auto 90px; }
+.profile-page h1 { margin:24px 0 8px; }
+.profile-subtitle { color:#6b7280; margin:0 0 28px; }
+.profile-grid { display:grid; grid-template-columns:300px 1fr; gap:24px; align-items:start; }
+.profile-card { padding:28px; background:white; border-radius:18px; box-shadow:0 8px 24px #0000000d; }
+.profile-card h2 { font-size:1.25rem; margin:0 0 20px; }
+.profile-page fieldset { border:0; padding:0; margin:0; min-width:0; }
+.photo-card { text-align:center; }
+.avatar-frame { margin:20px auto; width:144px; height:144px; border-radius:50%; overflow:hidden; background:#e8edf5; display:grid; place-items:center; font-size:2.3rem; color:#475569; }
+.avatar-frame img { width:100%; height:100%; object-fit:cover; }
+.profile-page input[type=file] { font-size:.85rem; border:0; padding:10px 0; }
+.name-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.profile-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; }
+.profile-page form button { width:auto; margin-top:0; }
+.profile-page input[readonly] { background:#f4f6f8; color:#6b7280; }
+#profile-message { min-height:1.6em; padding:0 4px; }
+@media(max-width:700px) { .profile-grid,.name-grid { grid-template-columns:1fr; } .profile-card { padding:24px; } }
+</style>
+<script defer src="shared/frontend/navigation.js">
+</script>
+  <script defer src="shared/frontend/public-config.js">
+</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js">
+</script>
+  <script defer src="shared/frontend/supabase-client.js">
+</script>
+  <script defer src="shared/frontend/auth-policy.js">
+</script>
+  <script defer src="shared/frontend/auth.js">
+</script>
+  <script defer src="shared/frontend/developer-mode.js">
+</script>
+  <script defer src="shared/frontend/profile.js"></script>
+<script defer src="shared/frontend/auth-guard.js">
+</script>
+</head>
+<body data-auth-area="account">
+<section id="auth-shell" class="auth-shell">
+<p role="status">Checking your account…</p>
+<button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button>
+<noscript>
+<p>JavaScript is required to sign in and verify access.</p>
+</noscript>
+</section>
+<div id="protected-content" hidden>
+<div class="auth-account">
+<span data-auth-name>
+</span>
+<button type="button" data-auth-logout>Sign out</button>
+</div>
+<main class="profile-page">
+<a id="back-dashboard" href="login.html">← Back to dashboard</a>
+<h1>My profile</h1>
+<p class="profile-subtitle">Keep your personal details up to date.</p>
+<form id="profile-form">
+<fieldset disabled>
+<div class="profile-grid">
+<section class="profile-card photo-card" aria-labelledby="photo-title">
+<h2 id="photo-title">Profile picture</h2>
+<div class="avatar-frame"><span id="profile-initials" aria-hidden="true">You</span><img id="profile-photo" alt="Your profile picture" hidden></div>
+<label for="avatar">Choose a photo</label>
+<input id="avatar" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-hint">
+<p class="hint" id="photo-hint">JPG, PNG or WebP. Maximum 5 MB. Profile pictures are publicly viewable.</p>
+<button type="button" class="secondary" id="remove-photo">Remove picture</button>
+</section>
+<section class="profile-card" aria-labelledby="details-title">
+<h2 id="details-title">Personal information</h2>
+<div class="name-grid">
+<div><label for="first_name">First name</label><input id="first_name" name="first_name" autocomplete="given-name" maxlength="100" required></div>
+<div><label for="last_name">Last name</label><input id="last_name" name="last_name" autocomplete="family-name" maxlength="100" required></div>
+</div>
+<label for="phone">Phone number <span class="hint">(optional)</span></label>
+<input type="tel" id="phone" name="phone" autocomplete="tel" maxlength="30">
+<label for="email">Email address</label>
+<input type="email" id="email" name="email" autocomplete="email" readonly aria-describedby="email-hint">
+<p class="hint" id="email-hint">Your sign-in email. It cannot be changed on this page.</p>
+<div class="profile-actions"><button id="save-profile" type="submit">Save changes</button><button type="button" class="secondary" id="cancel-profile">Cancel changes</button></div>
+</section>
+</div>
+</fieldset>
+<p id="profile-message" role="status" aria-live="polite"></p>
+</form>
+</main>
+</div>
+</body>
+</html>

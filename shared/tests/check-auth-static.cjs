@@ -44,7 +44,7 @@ for (const file of walk(root)) {
       knownMissing.push(key);
     }
   }
-  if (/^(community-user|verified-assistant|admin)\/frontend\//.test(rel) || rel === 'developer.html') {
+  if (/^(community-user|verified-assistant|admin)\/frontend\//.test(rel) || ['developer.html', 'profile.html'].includes(rel)) {
     assert.match(source, /id="protected-content" hidden/);
     assert.match(source, /data-auth-area=/);
     assert.equal(sources.filter(s => s.endsWith('/auth-guard.js')).length, 1);

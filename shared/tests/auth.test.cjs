@@ -8,8 +8,14 @@ const state = (role = 'community_user', developer = false, assistant = null) => 
   user: { id: 'test-user' }, profile: { role }, developer, assistant
 });
 test('all anonymous role/developer URLs are denied', () => {
-  for (const area of ['community_user', 'assistant', 'admin', 'developer']) assert.equal(policy.allowed(null, area, 'admin'), false);
+  for (const area of ['community_user', 'assistant', 'admin', 'developer', 'account']) assert.equal(policy.allowed(null, area, 'admin'), false);
   assert.equal(policy.destination(null), 'login.html');
+});
+test('personal account page is available to all authenticated roles and developer views', () => {
+  for (const role of ['community_user', 'assistant', 'admin', 'organisation']) {
+    assert.equal(policy.allowed(state(role), 'account'), true);
+    assert.equal(policy.allowed(state(role, true), 'account', 'community_user'), true);
+  }
 });
 test('forged browser developer view cannot elevate a normal user', () => {
   for (const view of ['admin', 'assistant', 'developer', '__proto__']) {

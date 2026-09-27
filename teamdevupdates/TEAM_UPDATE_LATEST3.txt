@@ -1,0 +1,86 @@
+COMMUNITY SERVICES — PERSONAL PROFILE FOLLOW-UP
+Date: 2026-09-27
+Feature: Profile button, personal information editing and profile pictures
+
+OWNER REQUEST
+Add a Profile button next to Sign out that opens a page where the signed-in
+user can have a profile picture and edit personal information.
+This follow-up explicitly extends the original auth-only scope to personal
+profile editing and avatar uploads. Other business workflows remain untouched.
+
+IMPLEMENTATION
+- Shared auth guard adds one Profile button beside Sign out across guarded pages.
+- New root profile.html works with GitHub Pages project-directory navigation.
+- Protected account page is available to any authenticated role, including
+  developers previewing another interface. It always edits the actual account.
+- Editable first name, last name and optional phone. Sign-in email is read-only.
+- Picture selection, local preview, image decoding/type/size validation, replace,
+  remove-from-profile, initials fallback, cancel and save feedback.
+- JPG, PNG and WebP up to 5 MB; existing public avatars bucket.
+- Upload path uses authenticated UUID / random filename. Original filenames and
+  user-supplied IDs are not used. No upsert or role mutation.
+- Profile save updates only first_name, last_name, phone and optional avatar_path.
+  The existing RLS/column grants apply. No migrations or server secrets added.
+- Unsaved changes survive normal visibility/auth rechecks. Refresh reloads saved
+  details. Controls prevent duplicate saves; failures show honest error messages.
+
+FILES ADDED FOR THIS FEATURE
+profile.html — responsive protected personal profile page, inline styles.
+shared/frontend/profile.js — profile initialization, validation, previews,
+  own-account persistence and avatar upload logic.
+teamdevupdates/TEAM_UPDATE_LATEST3.txt — this handoff, continuing updates 0, 1 and 2.
+
+FILES UPDATED FOR THIS FEATURE
+shared/frontend/auth-guard.js — shared Profile button beside Sign out.
+shared/frontend/auth-policy.js — authenticated account-page access.
+shared/frontend/auth.js — load phone/avatar_path with trusted profile state.
+shared/tests/auth.test.cjs — account access coverage for all roles/developer views.
+shared/tests/auth-browser.cjs — own-profile save/refresh, navigation, unsaved edit
+  preservation, cancel, avatar success/removal, upload/save errors, invalid files.
+shared/tests/check-auth-static.cjs — include profile.html in guard checks.
+README.md — follow-up behavior, storage semantics and handoff locations.
+Some feature files were included by external commits while this task was running;
+this inventory records the feature, not just the remaining working-tree diff.
+No files deleted and no commits/push/deployment performed by this assistant.
+
+VERIFICATION
+PASS: node --test shared/tests/auth.test.cjs — 10 tests.
+PASS: node shared/tests/auth-browser.cjs — 29 browser scenarios in headless Edge,
+  using bundled Playwright through NODE_PATH. Includes two real pinned-SDK callback
+  tests against mocked HTTP. Other scenarios mock Supabase; no live account writes.
+PASS: node --check for changed JavaScript; all profile href/script references;
+  initially hidden protected content and account guard.
+PASS: git diff --check.
+PASS: inspected mobile profile screenshot at 390px width; no horizontal overflow.
+Screenshot (ignored test output): test-results/profile-mobile.png.
+
+FULL-SITE STATIC CHECK LIMITATION
+node shared/tests/check-auth-static.cjs is currently BLOCKED by existing renamed
+page links, starting with:
+community-user/frontend/community-user_browse-requests.html
+  -> commubity_user_requests.html (file has been renamed).
+The repository received file-renaming commits during this task. Several older
+community/assistant links and script references still use prior filenames.
+These are separate from the new profile flow and have not been masked by changing
+the static checker baseline. Reconcile the renamed paths in a separate cleanup.
+The browser profile scenarios and targeted profile static checks passed.
+
+LIVE CHECKS STILL NEEDED
+Using a real account on the deployed site: save name/phone, reload, upload a valid
+image, verify the stored avatar and public rendering, remove it from the profile,
+check denied cross-user writes and Storage paths. No real user data was modified
+or picture uploaded during testing. Supabase RLS remains the authorization boundary.
+
+STORAGE LIMITATIONS
+The existing avatars bucket is public; the page tells users pictures are publicly
+viewable. Upload and profile update are separate requests. If the profile update
+fails after upload, an unlinked image may remain. Replacing/removing a picture
+changes the profile reference; old objects remain for a future storage cleanup.
+Email changes are not implemented because they require a separate confirmation flow.
+
+HANDOFF CONTEXT
+The previous Phase 1 report now lives at teamdevupdates/TEAM_UPDATE_LATEST2.txt
+(rename already present in the checkout). It and historical files are preserved.
+This new report supersedes the old auth-only exclusions specifically for personal
+profile/avatar editing. Requests, donations, assignments, reports, notifications,
+assistant verification and other business workflows were not integrated here.
