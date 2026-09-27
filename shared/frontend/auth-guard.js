@@ -4,6 +4,16 @@
   const shell = document.getElementById('auth-shell');
   const content = document.getElementById('protected-content');
   let checking = false, rerun = false, signingOut = false;
+  // One account destination shared by all roles, including developer previews.
+  const accountBar = document.querySelector('.auth-account');
+  if (accountBar && area !== 'account') {
+    const profileButton = document.createElement('button');
+    profileButton.type = 'button';
+    profileButton.textContent = 'Profile';
+    profileButton.dataset.authProfile = '';
+    profileButton.addEventListener('click', () => window.location.assign(AppNavigation.url('profile.html')));
+    accountBar.insertBefore(profileButton, accountBar.querySelector('[data-auth-logout]'));
+  }
   function conceal() {
     content.hidden = true;
     document.getElementById('developer-switcher')?.remove();

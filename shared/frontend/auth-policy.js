@@ -24,6 +24,7 @@
   }
   function allowed(state, area, view) {
     if (!state) return false;
+    if (area === 'account') return true;
     if (area === 'developer') return state.developer === true;
     if (state.developer && validView(view)) return area === view;
     return area === normalView(state);
