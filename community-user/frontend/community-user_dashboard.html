@@ -110,6 +110,9 @@
         padding: 24px;
       }
     }
+
+    .search-card{background:#fff;border-radius:18px;padding:28px;margin-bottom:24px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+    .search-card h3{font-size:1.35rem;margin-bottom:8px}.search-card>p{color:#6b7280;line-height:1.5;margin-bottom:18px}.search-form{display:flex;gap:10px}.search-form input{flex:1;padding:13px;border:1px solid #d1d5db;border-radius:10px;font:inherit}.search-form button{border:0;border-radius:10px;padding:13px 18px;background:#111827;color:#fff;font-weight:700;cursor:pointer}.search-message{margin-top:14px;color:#6b7280}.donation-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px}.donation-result{border:1px solid #e5e7eb;border-radius:12px;padding:16px}.donation-result h4{margin-bottom:6px}.donation-result p{color:#6b7280;font-size:.9rem;margin:4px 0}.donation-result a{display:inline-block;margin-top:10px;color:#111827;font-weight:700;text-decoration:none}.donation-result a:hover{text-decoration:underline}@media(max-width:600px){.search-form{flex-direction:column}}
   </style>
 <style>
 [hidden] { display:none !important; }
@@ -160,6 +163,17 @@
       </p>
     </section>
 
+    <section class="search-card">
+      <h3>Search Available Items</h3>
+      <p>Search donated items currently available in the system. If you cannot find what you need, you can request it instead.</p>
+      <form id="donationSearchForm" class="search-form">
+        <input id="donationSearch" type="search" maxlength="100" placeholder="Search for food, clothing, water, school supplies…" aria-label="Search available items">
+        <button type="submit">Search</button>
+      </form>
+      <div id="donationSearchMessage" class="search-message" role="status"></div>
+      <div id="donationResults" class="donation-results"></div>
+    </section>
+
     <section class="dashboard-grid">
       <article class="card">
         <h3>Request Help</h3>
@@ -181,7 +195,7 @@
     </section>
   </main>
 
-  <script src="community-user_dashboard.js"></script>
+  <script src="community-api.js"></script><script src="community-user_dashboard.js"></script>
 </div>
 </body>
 </html>

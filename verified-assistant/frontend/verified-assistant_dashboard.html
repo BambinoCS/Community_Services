@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Training</title>
+  <title>Assistant Dashboard</title>
 
   <style>
     :root {
@@ -332,35 +332,55 @@
 <div id="protected-content" hidden>
 <div class="auth-account"><span data-auth-name></span><button type="button" data-auth-logout>Sign out</button></div>
   <header class="app-header">
-    <a class="back-link" href="verified_assistant_dashboard.html">← Back to Dashboard</a>
+    <h1>Community Service Platform</h1>
+    <div class="header-right"><span class="user-type">Verified Assistant</span></div>
   </header>
   <nav class="app-nav">
-    <a href="verified_assistant_dashboard.html">Dashboard</a>
-    <a href="verified_assistant_availible_requests.html">Available Requests</a>
-    <a href="verified_assistant_active_jobs.html">Active Jobs</a>
-    <a href="verified_assistants_complefed_jobs.html">Completed Jobs</a>
-    <a href="verigied_assistant_training.html">Training</a>
-    <a href="verified_assistant_profile.html">Profile</a>
+    <a href="verified-assistant_dashboard.html">Dashboard</a>
+    <a href="verified-assistant_available-requests.html">Available Requests</a>
+    <a href="verified-assistant_active-jobs.html">Active Jobs</a>
+    <a href="verified-assistant_completed-jobs.html">Completed Jobs</a>
+    <a href="verified-assistant_training.html">Training</a>
+    <a href="verified-assistant_profile.html">Profile</a>
   </nav>
 
   <main>
-    <section class="page-heading">
-      <h1>Training</h1>
-      <p>Complete the required training modules to become eligible for protected service jobs.</p>
+    <section class="welcome card">
+      <h2>Welcome back</h2>
+      <p>Manage your verification, training, availability, and jobs from here.</p>
     </section>
 
-    <section class="card" style="margin-bottom:22px;">
-      <h3>Overall Progress</h3>
-      <div class="progress-bar"><div class="progress-bar-fill" id="overallProgressFill" style="width:0%;"></div></div>
-      <p class="hint" id="overallProgressLabel" style="margin-top:8px;"></p>
+    <h2 class="section-title">Status</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Verification Status</h3>
+        <div id="verificationStatusBadge" style="margin-top:10px;"></div>
+        <p id="verificationNote" class="hint" style="margin-top:10px;"></p>
+      </article>
+      <article class="card">
+        <h3>Training Status</h3>
+        <div id="trainingStatusBadge" style="margin-top:10px;"></div>
+        <p class="hint" style="margin-top:10px;"><a href="verified-assistant_training.html">View training modules →</a></p>
+      </article>
+      <article class="card">
+        <h3>Availability</h3>
+        <div id="availabilityToggleContainer"></div>
+      </article>
     </section>
 
-    <section id="modulesContainer" class="grid-2"></section>
+    <h2 class="section-title">Available Requests</h2>
+    <section id="availableRequestsContainer" class="grid"></section>
+
+    <h2 class="section-title">Active Jobs</h2>
+    <section id="activeJobsContainer" class="grid"></section>
+
+    <h2 class="section-title">Completed Jobs</h2>
+    <section id="completedJobsContainer" class="grid"></section>
   </main>
 
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
-  <script src="verified-assistant_training.js"></script>
+  <script src="verified-assistant_dashboard.js"></script>
 </div>
 </body>
 </html>

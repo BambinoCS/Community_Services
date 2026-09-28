@@ -1,54 +1,9 @@
-/**
- * community-user_requests.js
- *
- * "My Requests" list. No backend/API is connected yet, so this
- * starts from an empty data set and shows the standard empty state
- * rather than inventing fake completed requests.
- */
-
-// TODO: replace with a real fetch() of the current user's requests
-// once the API/Supabase `requests` table is connected.
-let allRequests = [];
-
-document.addEventListener("DOMContentLoaded", () => {
-  renderRequests(allRequests);
-
-  document.getElementById("statusFilter").addEventListener("change", applyFilters);
-  document.getElementById("typeFilter").addEventListener("change", applyFilters);
-});
-
-function applyFilters() {
-  const status = document.getElementById("statusFilter").value;
-  const type = document.getElementById("typeFilter").value;
-
-  const filtered = allRequests.filter((request) => {
-    return (!status || request.status === status) && (!type || request.requestType === type);
-  });
-
-  renderRequests(filtered);
-}
-
-function renderRequests(requests) {
-  const container = document.getElementById("requestsContainer");
-
-  if (!requests || requests.length === 0) {
-    renderEmptyState(
-      container,
-      "No requests yet.",
-      "Requests you submit through \"Request Help\" will appear here."
-    );
-    return;
-  }
-
-  container.innerHTML = requests.map((request) => `
-    <article class="item-card">
-      <div class="item-card-top">
-        <h3>${request.category}</h3>
-        ${renderStatusBadge(request.status, REQUEST_STATUS_LABELS)}
-      </div>
-      <p class="meta">Type: ${request.requestType}</p>
-      <p class="meta">Location: ${request.location}</p>
-      <p class="meta">Date: ${formatDate(request.createdAt)}</p>
-    </article>
-  `).join("");
-}
+let allRequests=[];
+document.addEventListener("DOMContentLoaded",()=>{wireFilters();loadRequests();});
+document.addEventListener("community:authenticated",loadRequests);
+function wireFilters(){document.getElementById("statusFilter")?.addEventListener("change",applyFilters);document.getElementById("typeFilter")?.addEventListener("change",applyFilters);}
+async function loadRequests(){const c=document.getElementById("requestsContainer");if(!c)return;renderLoadingState(c,"Loading your requests…");try{allRequests=await CommunityAPI.ownRequests();applyFilters();}catch(error){console.error(error);renderErrorState(c,error.message||"Could not load your requests.");}}
+function applyFilters(){const status=document.getElementById("statusFilter")?.value||"",type=document.getElementById("typeFilter")?.value||"";renderRequests(allRequests.filter(r=>(!status||r.status===status)&&(!type||r.request_type===type)));}
+function renderRequests(rows){const c=document.getElementById("requestsContainer");if(!rows.length){renderEmptyState(c,"No requests yet.","Requests you submit through Request Help will appear here.");return;}c.innerHTML=rows.map(r=>`<article class="item-card"><div class="item-card-top"><h3>${escapeHtml(r.item_name||r.category||"Request")}</h3>${renderStatusBadge(r.status,REQUEST_STATUS_LABELS)}</div><p class="meta">Type: ${escapeHtml(r.request_type)}</p><p class="meta">Location: ${escapeHtml(r.location||"Not specified")}</p><p class="meta">Submitted: ${escapeHtml(formatDate(r.created_at))}</p>${r.description?`<p class="meta">${escapeHtml(r.description)}</p>`:""}${["open","assigned"].includes(r.status)?`<div class="actions"><button class="btn btn-danger btn-sm" data-cancel-request="${r.id}">Cancel Request</button></div>`:""}</article>`).join("");c.querySelectorAll("[data-cancel-request]").forEach(b=>b.addEventListener("click",()=>cancelRequest(b.dataset.cancelRequest,b)));}
+async function cancelRequest(id,button){button.disabled=true;try{await CommunityAPI.cancelRequest(id);await loadRequests();}catch(error){alert(error.message||"Could not cancel this request.");button.disabled=false;}}
+function escapeHtml(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}

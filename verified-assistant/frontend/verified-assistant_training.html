@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Completed Jobs</title>
+  <title>Training</title>
 
   <style>
     :root {
@@ -332,29 +332,35 @@
 <div id="protected-content" hidden>
 <div class="auth-account"><span data-auth-name></span><button type="button" data-auth-logout>Sign out</button></div>
   <header class="app-header">
-    <a class="back-link" href="verified_assistant_dashboard.html">← Back to Dashboard</a>
+    <a class="back-link" href="verified-assistant_dashboard.html">← Back to Dashboard</a>
   </header>
   <nav class="app-nav">
-    <a href="verified_assistant_dashboard.html">Dashboard</a>
-    <a href="verified_assistant_availible_requests.html">Available Requests</a>
-    <a href="verified_assistant_active_jobs.html">Active Jobs</a>
-    <a href="verified_assistants_complefed_jobs.html">Completed Jobs</a>
-    <a href="verigied_assistant_training.html">Training</a>
-    <a href="verified_assistant_profile.html">Profile</a>
+    <a href="verified-assistant_dashboard.html">Dashboard</a>
+    <a href="verified-assistant_available-requests.html">Available Requests</a>
+    <a href="verified-assistant_active-jobs.html">Active Jobs</a>
+    <a href="verified-assistant_completed-jobs.html">Completed Jobs</a>
+    <a href="verified-assistant_training.html">Training</a>
+    <a href="verified-assistant_profile.html">Profile</a>
   </nav>
 
   <main>
     <section class="page-heading">
-      <h1>Completed Jobs</h1>
-      <p>A record of jobs you've finished.</p>
+      <h1>Training</h1>
+      <p>Complete the required training modules to become eligible for protected service jobs.</p>
     </section>
 
-    <section id="jobsContainer" class="grid"></section>
+    <section class="card" style="margin-bottom:22px;">
+      <h3>Overall Progress</h3>
+      <div class="progress-bar"><div class="progress-bar-fill" id="overallProgressFill" style="width:0%;"></div></div>
+      <p class="hint" id="overallProgressLabel" style="margin-top:8px;"></p>
+    </section>
+
+    <section id="modulesContainer" class="grid-2"></section>
   </main>
 
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
-  <script src="verified-assistant_completed-jobs.js"></script>
+  <script src="verified-assistant_training.js"></script>
 </div>
 </body>
 </html>

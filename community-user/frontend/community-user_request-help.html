@@ -1,202 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Request Help</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f6f8;
-      color: #1f2937;
-      min-height: 100vh;
-    }
-
-    header {
-      background: #ffffff;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 18px 28px;
-    }
-
-    .back-link {
-      color: #111827;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    main {
-      width: min(950px, 92%);
-      margin: 40px auto;
-      padding-bottom: 100px;
-    }
-
-    .page-heading {
-      margin-bottom: 28px;
-    }
-
-    .page-heading h1 {
-      font-size: 2rem;
-      margin-bottom: 10px;
-    }
-
-    .page-heading p {
-      color: #6b7280;
-      line-height: 1.6;
-    }
-
-    .help-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 20px;
-    }
-
-    .help-card {
-      background: #ffffff;
-      border: 0;
-      border-radius: 16px;
-      padding: 28px;
-      text-align: left;
-      cursor: pointer;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
-      transition: 0.2s ease;
-    }
-
-    .help-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.08);
-    }
-
-    .help-card h2 {
-      font-size: 1.2rem;
-      margin-bottom: 10px;
-    }
-
-    .help-card p {
-      color: #6b7280;
-      line-height: 1.5;
-    }
-
-    .helpline-button {
-      position: fixed;
-      right: 28px;
-      bottom: 28px;
-      width: 62px;
-      height: 62px;
-      border-radius: 50%;
-      border: 0;
-      background: #111827;
-      color: white;
-      font-size: 1.7rem;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    }
-
-    .notice {
-      display: none;
-      margin-top: 24px;
-      padding: 16px 18px;
-      border-radius: 10px;
-      background: #ffffff;
-      color: #374151;
-      border: 1px solid #e5e7eb;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Request Help</title>
 <style>
-[hidden] { display:none !important; }
-.auth-shell { font:16px/1.6 Arial,sans-serif; color:#1f2937; background:#f4f6f8; padding:32px; min-height:100vh; }
-.auth-shell button,.auth-account button { padding:10px 16px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#111827; cursor:pointer; }
-.auth-account { display:flex; gap:12px; justify-content:flex-end; align-items:center; padding:10px 24px; background:#fff; border-bottom:1px solid #e5e7eb; font:14px Arial,sans-serif; }
-.auth-account span { margin-right:auto; }
-.dev-princess { color:#542064; font:16px/1.6 Arial,sans-serif; }
-.dev-princess button { display:block; width:100%; margin:12px 0; padding:14px 20px; border:2px solid #b7358b; border-radius:28px; background:linear-gradient(135deg,#ffe0ef,#e8d9ff); color:#542064; font:700 16px/1.4 Arial,sans-serif; cursor:pointer; box-shadow:0 5px 16px #c9469d33; }
-.dev-princess button:hover { background:#f9c3e7; }
-.dev-princess button:focus-visible { outline:3px solid #542064; outline-offset:4px; }
-.dev-princess button:disabled { opacity:.6; cursor:wait; }
-.dev-princess .dev-floating { position:fixed; bottom:16px; left:16px; width:auto; z-index:100; margin:0; }
-.dev-princess .dev-dialog { margin:auto; padding:28px; width:min(460px,calc(100% - 32px)); max-height:85vh; overflow:auto; border:3px solid #cb5ba9; border-radius:32px; background:radial-gradient(circle at 15% 10%,#fff 0 2px,transparent 3px),linear-gradient(135deg,#fff0f8,#eee1ff); background-size:24px 24px,auto; color:#542064; box-shadow:0 16px 80px #7e227c55; }
-.dev-dialog::backdrop { background:#29143199; }
-.dev-dialog p { margin:12px 0; }
-.dev-selector { max-width:720px; margin:40px auto; padding:32px; border:3px solid #cb5ba9; border-radius:40px; background:linear-gradient(140deg,#fff0f8,#eadbff); box-shadow:0 18px 60px #cb5ba933; text-align:center; }
-.dev-selector h1 { font-size:clamp(1.6rem,5vw,2.5rem); }
-.dev-selector .flowers { font-size:2rem; letter-spacing:.3em; }
-@media (prefers-reduced-motion:no-preference) { .dev-princess button { transition:background .15s,box-shadow .15s; } }
-@media (max-width:480px) { .dev-selector { margin:20px 12px; padding:20px; } .auth-account { flex-wrap:wrap; } }
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;color:#1f2937;min-height:100vh}header{background:#fff;border-bottom:1px solid #e5e7eb;padding:18px 28px}.back-link{color:#111827;text-decoration:none;font-weight:700}main{width:min(1050px,92%);margin:40px auto 100px}.heading{margin-bottom:28px}.heading h1{font-size:2rem;margin-bottom:10px}.heading p{color:#6b7280;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}.help-card{display:block;background:#fff;border:0;border-radius:16px;padding:28px;text-align:left;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.05);transition:.2s ease;color:inherit;text-decoration:none}.help-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,0,0,.08)}.help-card h2{font-size:1.2rem;margin-bottom:10px}.help-card p{color:#6b7280;line-height:1.5}.helpline-button{position:fixed;right:28px;bottom:28px;width:62px;height:62px;border-radius:50%;border:0;background:#111827;color:#fff;font-size:1.7rem;font-weight:700;cursor:pointer;box-shadow:0 10px 25px rgba(0,0,0,.2)}.helpline-panel{display:none;position:fixed;right:28px;bottom:102px;width:min(360px,calc(100% - 40px));background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px;box-shadow:0 18px 45px rgba(0,0,0,.18);z-index:10}.helpline-panel.show{display:block}.helpline-panel h2{margin-bottom:8px}.helpline-panel p{color:#6b7280;line-height:1.5}.close{float:right;border:0;background:transparent;font-size:1.4rem;cursor:pointer}@media(max-width:600px){header{padding:16px 18px}main{margin-top:24px}.helpline-button{right:18px;bottom:18px}}
+[hidden]{display:none!important}.auth-shell{font:16px/1.6 Arial,sans-serif;color:#1f2937;background:#f4f6f8;padding:32px;min-height:100vh}.auth-shell button,.auth-account button{padding:10px 16px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#111827;cursor:pointer}.auth-account{display:flex;gap:12px;justify-content:flex-end;align-items:center;padding:10px 24px;background:#fff;border-bottom:1px solid #e5e7eb;font:14px Arial,sans-serif}.auth-account span{margin-right:auto}
 </style>
-  <script defer src="../../shared/frontend/navigation.js"></script>
-  <script defer src="../../shared/frontend/public-config.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
-  <script defer src="../../shared/frontend/supabase-client.js"></script>
-  <script defer src="../../shared/frontend/auth-policy.js"></script>
-  <script defer src="../../shared/frontend/auth.js"></script>
-  <script defer src="../../shared/frontend/developer-mode.js"></script>
-  <script defer src="../../shared/frontend/auth-guard.js"></script>
+<script defer src="../../shared/frontend/navigation.js"></script>
+<script defer src="../../shared/frontend/public-config.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script defer src="../../shared/frontend/supabase-client.js"></script>
+<script defer src="../../shared/frontend/auth-policy.js"></script>
+<script defer src="../../shared/frontend/auth.js"></script>
+<script defer src="../../shared/frontend/developer-mode.js"></script>
+<script defer src="../../shared/frontend/auth-guard.js"></script>
 </head>
-
 <body data-auth-area="community_user">
-<section id="auth-shell" class="auth-shell"><p role="status">Checking your account…</p><button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button><noscript><p>JavaScript is required to sign in and verify access.</p></noscript></section>
+<section id="auth-shell" class="auth-shell"><p role="status">Checking your account…</p><button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button></section>
 <div id="protected-content" hidden>
 <div class="auth-account"><span data-auth-name></span><button type="button" data-auth-logout>Sign out</button></div>
-  <header>
-    <a class="back-link" href="community-user_dashboard.html">← Back to Dashboard</a>
-  </header>
-
-  <main>
-    <section class="page-heading">
-      <h1>Request Help</h1>
-      <p>
-        Select the type of help you need. The detailed forms and backend logic
-        for these options can be connected later.
-      </p>
-    </section>
-
-    <section class="help-grid">
-      <button class="help-card" data-feature="Report a Problem">
-        <h2>Report a Problem</h2>
-        <p>
-          Report a community issue, platform issue, safety concern, or another
-          problem that requires attention.
-        </p>
-      </button>
-
-      <button class="help-card" data-feature="Request Service">
-        <h2>Request Service</h2>
-        <p>
-          Ask for approved assistance such as delivery, accompaniment,
-          transport support, or help reaching essential services.
-        </p>
-      </button>
-
-      <button class="help-card" data-feature="Request New Items">
-        <h2>Request New Items</h2>
-        <p>
-          Request food, water, clothing, school supplies, household goods, or
-          other essential resources.
-        </p>
-      </button>
-    </section>
-
-    <div id="notice" class="notice"></div>
-  </main>
-
-  <button
-    id="helplineButton"
-    class="helpline-button"
-    type="button"
-    title="Helpline"
-    aria-label="Open helpline"
-  >
-    ?
-  </button>
-
-  <script src="community-user_request-help.js"></script>
+<header><a class="back-link" href="community-user_dashboard.html">← Back to Dashboard</a></header>
+<main>
+<section class="heading"><h1>Request Help</h1><p>Choose what you need help with. Each option opens a dedicated form so your request can be sent to the system.</p></section>
+<section class="grid">
+<a class="help-card" href="community-user_report-problem.html"><h2>Report a Problem</h2><p>Report a community, platform, safety, or service problem and tell us exactly where it is happening.</p></a>
+<a class="help-card" href="community-user_request-service.html"><h2>Request Service</h2><p>Fill in a service request for approved community assistance such as food delivery, transport support, or healthcare access.</p></a>
+<a class="help-card" href="community-user_request-new-item.html"><h2>Request New Items</h2><p>Request an item that is not available in the dashboard search, including the quantity and location where it is needed.</p></a>
+</section>
+</main>
+<div id="helplinePanel" class="helpline-panel" role="dialog" aria-labelledby="helplineTitle" aria-hidden="true"><button id="closeHelpline" class="close" type="button" aria-label="Close">×</button><h2 id="helplineTitle">Helpline</h2><p>This button currently provides support information only. Emergency-response claims and live emergency services are not provided by this placeholder.</p></div>
+<button id="helplineButton" class="helpline-button" type="button" title="Helpline" aria-label="Open helpline">?</button>
+<script src="community-user_request-help.js"></script>
 </div>
 </body>
 </html>

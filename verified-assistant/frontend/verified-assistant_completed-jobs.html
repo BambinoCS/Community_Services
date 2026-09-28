@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Profile</title>
+  <title>Completed Jobs</title>
 
   <style>
     :root {
@@ -332,91 +332,29 @@
 <div id="protected-content" hidden>
 <div class="auth-account"><span data-auth-name></span><button type="button" data-auth-logout>Sign out</button></div>
   <header class="app-header">
-    <a class="back-link" href="verified_assistant_dashboard.html">← Back to Dashboard</a>
+    <a class="back-link" href="verified-assistant_dashboard.html">← Back to Dashboard</a>
   </header>
   <nav class="app-nav">
-    <a href="verified_assistant_dashboard.html">Dashboard</a>
-    <a href="verified_assistant_availible_requests.html">Available Requests</a>
-    <a href="verified_assistant_active_jobs.html">Active Jobs</a>
-    <a href="verified_assistants_complefed_jobs.html">Completed Jobs</a>
-    <a href="verigied_assistant_training.html">Training</a>
-    <a href="verified_assistant_profile.html">Profile</a>
+    <a href="verified-assistant_dashboard.html">Dashboard</a>
+    <a href="verified-assistant_available-requests.html">Available Requests</a>
+    <a href="verified-assistant_active-jobs.html">Active Jobs</a>
+    <a href="verified-assistant_completed-jobs.html">Completed Jobs</a>
+    <a href="verified-assistant_training.html">Training</a>
+    <a href="verified-assistant_profile.html">Profile</a>
   </nav>
 
   <main>
     <section class="page-heading">
-      <h1>My Profile</h1>
-      <p>Your assistant details and verification status.</p>
+      <h1>Completed Jobs</h1>
+      <p>A record of jobs you've finished.</p>
     </section>
 
-    <section class="card">
-      <form id="profileForm" novalidate>
-        <div class="grid-2">
-          <div class="form-group">
-            <label for="firstName">First Name</label>
-            <input type="text" id="firstName" name="firstName" required />
-            <p class="field-error" id="firstNameError"></p>
-          </div>
-          <div class="form-group">
-            <label for="lastName">Last Name</label>
-            <input type="text" id="lastName" name="lastName" required />
-            <p class="field-error" id="lastNameError"></p>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="phone">Phone</label>
-          <input type="tel" id="phone" name="phone" required />
-          <p class="field-error" id="phoneError"></p>
-        </div>
-
-        <div class="form-group">
-          <label for="profilePicture">Profile Picture</label>
-          <input type="file" id="profilePicture" name="profilePicture" accept="image/png, image/jpeg, image/webp" />
-          <p class="hint">JPEG, PNG or WEBP. Max 5MB.</p>
-          <p class="field-error" id="profilePictureError"></p>
-        </div>
-
-        <div class="form-group">
-          <label for="serviceCategories">Service Categories</label>
-          <select id="serviceCategories" name="serviceCategories" multiple size="6">
-            <option value="food_water_delivery">Food / Water Delivery</option>
-            <option value="grocery_collection">Grocery Collection</option>
-            <option value="elderly_assistance">Elderly Assistance</option>
-            <option value="public_transport_assistance">Public Transport Assistance</option>
-            <option value="healthcare_facility_assistance">Healthcare Facility Assistance</option>
-            <option value="donated_resource_delivery">Donated Resource Delivery</option>
-          </select>
-          <p class="hint">Hold Ctrl/Cmd to select multiple.</p>
-        </div>
-
-        <div id="profileMessage" class="message-banner"></div>
-
-        <button type="submit" class="btn btn-primary">Save Profile</button>
-      </form>
-    </section>
-
-    <h2 class="section-title">Verification &amp; Status</h2>
-    <section class="grid">
-      <article class="card">
-        <h3>Identity Verification</h3>
-        <div id="identityStatus" style="margin-top:10px;"></div>
-      </article>
-      <article class="card">
-        <h3>Training Verification</h3>
-        <div id="trainingStatus" style="margin-top:10px;"></div>
-      </article>
-      <article class="card">
-        <h3>Availability</h3>
-        <div id="availabilityStatus" style="margin-top:10px;"></div>
-      </article>
-    </section>
+    <section id="jobsContainer" class="grid"></section>
   </main>
 
-  <script src="../../shared/frontend/validation.js"></script>
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
-  <script src="verified-assistant_profile.js"></script>
+  <script src="verified-assistant_completed-jobs.js"></script>
 </div>
 </body>
 </html>

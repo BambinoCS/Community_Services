@@ -3,7 +3,7 @@
   'use strict';
   const destinations = Object.freeze({
     community_user: 'community-user/frontend/community-user_dashboard.html',
-    assistant: 'verified-assistant/frontend/verified_assistant_dashboard.html',
+    assistant: 'verified-assistant/frontend/verified-assistant_dashboard.html',
     admin: 'admin/frontend/admin_dashboard.html'
   });
   const validView = (view) => Object.hasOwn(destinations, view);

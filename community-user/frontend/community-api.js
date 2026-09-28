@@ -53,7 +53,8 @@ API.createReport = async function(payload){
   const u=await user();
   const {data,error}=await client().from('reports').insert({
     user_id:u.id,category:payload.category,description:payload.description,
-    location:payload.location||null,status:'open'
+    location:payload.location||null,urgency:payload.urgency||null,
+    additional_info:payload.additionalInfo||null,status:'open'
   }).select('*').single();
   if(error) throw fail(error,'Could not submit your report.');
   return data;
@@ -99,6 +100,23 @@ API.createDonation = async function(payload, files){
   }
   return donation;
 };
+
+API.searchAvailableDonations = async function(query){
+  const q=(query||'').trim();
+  let request=client().from('donations')
+    .select('id,item_name,category,description,quantity,location,available_from,available_until,status')
+    .eq('status','available')
+    .order('created_at',{ascending:false})
+    .limit(20);
+  if(q){
+    const escaped=q.replace(/[%_]/g, c => `\${c}`);
+    request=request.or(`item_name.ilike.%${escaped}%,category.ilike.%${escaped}%,description.ilike.%${escaped}%`);
+  }
+  const {data,error}=await request;
+  if(error) throw fail(error,'Could not search available items.');
+  return data||[];
+};
+
 API.ownDonations = async function(){
   const u=await user();
   const {data,error}=await client().from('donations').select('*,donation_images(id,storage_path,sort_order)').eq('donor_id',u.id).order('created_at',{ascending:false});
