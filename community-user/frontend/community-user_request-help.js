@@ -1,245 +1,145 @@
-/**
- * community-user_request-help.js
- *
- * Handles the three Request Help workflows (Report a Problem,
- * Request Service, Request New Items) plus the Helpline panel.
- *
- * NOTE: There is no backend/API yet. Every "submit" handler below
- * validates the form, builds the payload the backend will eventually
- * expect (see data contracts in MASTER_AI_TEAM_CONTEXT.txt), and then
- * shows a clear "validated, not yet submitted" message. Nothing here
- * pretends data was permanently saved.
- */
+(function () {
+  'use strict';
 
-const MAX_DESCRIPTION_LENGTH = 1000;
+  const dialog = document.getElementById('requestServiceModal');
+  const form = document.getElementById('requestServiceForm');
+  const fields = document.getElementById('service-fields');
+  const submit = document.getElementById('submit-service-request');
+  const close = document.getElementById('close-service-dialog');
+  const message = document.getElementById('requestServiceMessage');
+  const notice = document.getElementById('notice');
+  const accountNotice = document.getElementById('service-account-notice');
+  const saving = document.getElementById('service-saving-message');
+  const date = form.elements.preferredDate;
+  let owner = null;
+  let canSubmit = false;
+  let busy = false;
+  let requestId = null;
 
-document.addEventListener("DOMContentLoaded", () => {
-  wireFeatureButtons();
-  wireModalCloseControls();
-  wireHelpline();
-  wireReportProblemForm();
-  wireRequestServiceForm();
-  wireRequestItemsForm();
-});
+  function today() {
+    const parts = new Intl.DateTimeFormat('en', {
+      timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const part = (type) => parts.find((item) => item.type === type).value;
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  }
 
-function wireFeatureButtons() {
-  document.querySelectorAll("[data-feature]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const feature = button.dataset.feature;
-      if (feature === "report-problem") openModal(document.getElementById("reportProblemModal"));
-      if (feature === "request-service") openModal(document.getElementById("requestServiceModal"));
-      if (feature === "request-items") openModal(document.getElementById("requestItemsModal"));
+  function showNotice(text, includeRequestsLink = false) {
+    notice.replaceChildren(document.createTextNode(text));
+    if (includeRequestsLink) {
+      const link = document.createElement('a');
+      link.href = 'community-user_requests.html';
+      link.textContent = 'View My Requests';
+      notice.append(document.createTextNode(' '), link);
+    }
+    notice.hidden = false;
+    notice.focus();
+  }
+
+  function showError(text) {
+    message.textContent = text;
+    message.hidden = false;
+    message.focus();
+  }
+
+  function updateControls() {
+    fields.disabled = busy || !canSubmit;
+    close.disabled = busy;
+    submit.textContent = busy ? 'Submitting…' : 'Submit request';
+    form.setAttribute('aria-busy', String(busy));
+    saving.hidden = !busy;
+  }
+
+  document.addEventListener('community:authenticated', (event) => {
+    const state = event.detail;
+    if (owner !== state.user.id) {
+      form.reset();
+      requestId = null;
+      message.hidden = true;
+      notice.hidden = true;
+    }
+    owner = state.user.id;
+    canSubmit = state.profile.role === 'community_user';
+    accountNotice.hidden = canSubmit;
+    accountNotice.textContent = canSubmit ? '' : 'You are viewing the community interface. Creating a service request requires a community user account; switching interfaces does not change your account role.';
+    date.min = today();
+    updateControls();
+  });
+
+  document.querySelectorAll('[data-feature]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.dataset.feature === 'request-service') {
+        date.min = today();
+        dialog.showModal();
+      } else {
+        showNotice(button.dataset.feature === 'report-problem'
+          ? 'Problem reporting is coming later. No report has been submitted.'
+          : 'Requests for items are coming later. No item request has been submitted.');
+      }
     });
   });
-}
 
-function wireModalCloseControls() {
-  document.querySelectorAll("[data-close-modal]").forEach((button) => {
-    button.addEventListener("click", () => {
-      closeModal(document.getElementById(button.dataset.closeModal));
-    });
+  function closeDialog() {
+    if (!busy) dialog.close();
+  }
+  close.addEventListener('click', closeDialog);
+  document.getElementById('cancel-service-request').addEventListener('click', closeDialog);
+  dialog.addEventListener('cancel', (event) => {
+    if (busy) event.preventDefault();
+  });
+  document.getElementById('helplineButton').addEventListener('click', () => {
+    showNotice('Helpline information is not available yet. This platform does not provide emergency response.');
   });
 
-  ["reportProblemModal", "requestServiceModal", "requestItemsModal", "helplineModal"].forEach((id) => {
-    enableModalDismiss(document.getElementById(id));
-  });
-}
+  // Retry unchanged data with the same ID so a lost response cannot create a duplicate.
+  function edited() {
+    if (!busy) requestId = null;
+    for (const field of form.querySelectorAll('input, textarea')) field.setCustomValidity('');
+  }
+  form.addEventListener('input', edited);
+  form.addEventListener('change', edited);
 
-function wireHelpline() {
-  document.getElementById("helplineButton").addEventListener("click", () => {
-    openModal(document.getElementById("helplineModal"));
-  });
-}
-
-/* ---------------------------- REPORT A PROBLEM ---------------------------- */
-
-function wireReportProblemForm() {
-  const form = document.getElementById("reportProblemForm");
-
-  form.addEventListener("submit", (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (busy) return;
+    if (!owner || !canSubmit) {
+      showError('Sign in with a community user account to submit a service request.');
+      return;
+    }
+    date.min = today();
+    const description = form.elements.description;
+    const location = form.elements.location;
+    description.setCustomValidity(description.value.trim() ? '' : 'Describe the assistance you need.');
+    location.setCustomValidity(location.value.trim() ? '' : 'Enter an area or meeting point.');
+    if (!form.reportValidity()) return;
 
-    if (!validateReportProblemForm()) return;
-
-    const reportData = collectReportProblemData();
-
-    // TODO: connect to POST /api/reports once the backend exists.
-    console.log("Report ready for backend submission:", reportData);
-
-    showBanner(
-      document.getElementById("reportProblemMessage"),
-      backendNotConnectedMessage("Report submitted successfully"),
-      "success"
-    );
-    form.reset();
+    const payload = {
+      category: form.elements.category.value,
+      description: description.value.trim(),
+      location: location.value.trim(),
+      preferredDate: date.value,
+      preferredTime: form.elements.preferredTime.value,
+      urgency: form.elements.urgency.value,
+      additionalInfo: form.elements.additionalInfo.value.trim()
+    };
+    const submittingOwner = owner;
+    busy = true;
+    message.hidden = true;
+    updateControls();
+    try {
+      requestId ||= crypto.randomUUID();
+      const result = await ServiceRequests.create(payload, requestId);
+      if (!result?.id) throw new Error('Your request could not be confirmed. Retry with the same details.');
+      if (owner !== submittingOwner) return;
+      form.reset();
+      requestId = null;
+      dialog.close();
+      showNotice('Your service request has been saved. Follow its progress in My Requests.', true);
+    } catch (error) {
+      if (owner === submittingOwner) showError(ServiceRequests.message(error));
+    } finally {
+      busy = false;
+      updateControls();
+    }
   });
-}
-
-function validateReportProblemForm() {
-  const type = document.getElementById("problemType");
-  const description = document.getElementById("problemDescription");
-  const location = document.getElementById("problemLocation");
-  const urgency = document.getElementById("problemUrgency");
-
-  let valid = true;
-  valid = setFieldError(type, document.getElementById("problemTypeError"),
-    isRequired(type.value) ? "" : "Please select a problem type.") && valid;
-
-  valid = setFieldError(description, document.getElementById("problemDescriptionError"),
-    !isRequired(description.value) ? "Please describe the problem."
-      : !isWithinMaxLength(description.value, MAX_DESCRIPTION_LENGTH) ? `Description must be ${MAX_DESCRIPTION_LENGTH} characters or fewer.`
-      : "") && valid;
-
-  valid = setFieldError(location, document.getElementById("problemLocationError"),
-    isRequired(location.value) ? "" : "Please provide a location.") && valid;
-
-  valid = setFieldError(urgency, document.getElementById("problemUrgencyError"),
-    isRequired(urgency.value) ? "" : "Please select an urgency level.") && valid;
-
-  return valid;
-}
-
-function collectReportProblemData() {
-  return {
-    problemType: document.getElementById("problemType").value,
-    description: document.getElementById("problemDescription").value.trim(),
-    location: document.getElementById("problemLocation").value.trim(),
-    urgency: document.getElementById("problemUrgency").value,
-    additionalInfo: document.getElementById("problemAdditional").value.trim(),
-  };
-}
-
-/* ---------------------------- REQUEST SERVICE ---------------------------- */
-
-function wireRequestServiceForm() {
-  const form = document.getElementById("requestServiceForm");
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    if (!validateRequestServiceForm()) return;
-
-    const requestData = collectRequestServiceData();
-
-    // TODO: connect to POST /api/requests once the backend exists.
-    console.log("Service request ready for backend submission:", requestData);
-
-    showBanner(
-      document.getElementById("requestServiceMessage"),
-      backendNotConnectedMessage("Service request submitted successfully"),
-      "success"
-    );
-    form.reset();
-  });
-}
-
-function validateRequestServiceForm() {
-  const category = document.getElementById("serviceCategory");
-  const description = document.getElementById("serviceDescription");
-  const location = document.getElementById("serviceLocation");
-  const date = document.getElementById("servicePreferredDate");
-  const time = document.getElementById("servicePreferredTime");
-  const urgency = document.getElementById("serviceUrgency");
-
-  let valid = true;
-  valid = setFieldError(category, document.getElementById("serviceCategoryError"),
-    isRequired(category.value) ? "" : "Please select a service category.") && valid;
-
-  valid = setFieldError(description, document.getElementById("serviceDescriptionError"),
-    !isRequired(description.value) ? "Please describe what you need."
-      : !isWithinMaxLength(description.value, MAX_DESCRIPTION_LENGTH) ? `Description must be ${MAX_DESCRIPTION_LENGTH} characters or fewer.`
-      : "") && valid;
-
-  valid = setFieldError(location, document.getElementById("serviceLocationError"),
-    isRequired(location.value) ? "" : "Please provide a location.") && valid;
-
-  valid = setFieldError(date, document.getElementById("servicePreferredDateError"),
-    !isRequired(date.value) ? "Please select a preferred date."
-      : !isNotPastDate(date.value) ? "Preferred date cannot be in the past."
-      : "") && valid;
-
-  valid = setFieldError(time, document.getElementById("servicePreferredTimeError"),
-    isRequired(time.value) ? "" : "Please select a preferred time.") && valid;
-
-  valid = setFieldError(urgency, document.getElementById("serviceUrgencyError"),
-    isRequired(urgency.value) ? "" : "Please select an urgency level.") && valid;
-
-  return valid;
-}
-
-function collectRequestServiceData() {
-  return {
-    requestType: "service",
-    category: document.getElementById("serviceCategory").value,
-    description: document.getElementById("serviceDescription").value.trim(),
-    location: document.getElementById("serviceLocation").value.trim(),
-    preferredDate: document.getElementById("servicePreferredDate").value,
-    preferredTime: document.getElementById("servicePreferredTime").value,
-    urgency: document.getElementById("serviceUrgency").value,
-    additionalInfo: document.getElementById("serviceAdditional").value.trim(),
-  };
-}
-
-/* --------------------------- REQUEST NEW ITEMS ---------------------------- */
-
-function wireRequestItemsForm() {
-  const form = document.getElementById("requestItemsForm");
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    if (!validateRequestItemsForm()) return;
-
-    const requestData = collectRequestItemsData();
-
-    // TODO: connect to POST /api/requests once the backend exists.
-    console.log("Item request ready for backend submission:", requestData);
-
-    showBanner(
-      document.getElementById("requestItemsMessage"),
-      backendNotConnectedMessage("Item request submitted successfully"),
-      "success"
-    );
-    form.reset();
-  });
-}
-
-function validateRequestItemsForm() {
-  const category = document.getElementById("itemCategory");
-  const description = document.getElementById("itemDescription");
-  const quantity = document.getElementById("itemQuantity");
-  const location = document.getElementById("itemLocation");
-  const urgency = document.getElementById("itemUrgency");
-
-  let valid = true;
-  valid = setFieldError(category, document.getElementById("itemCategoryError"),
-    isRequired(category.value) ? "" : "Please select an item category.") && valid;
-
-  valid = setFieldError(description, document.getElementById("itemDescriptionError"),
-    !isRequired(description.value) ? "Please describe what you need."
-      : !isWithinMaxLength(description.value, MAX_DESCRIPTION_LENGTH) ? `Description must be ${MAX_DESCRIPTION_LENGTH} characters or fewer.`
-      : "") && valid;
-
-  valid = setFieldError(quantity, document.getElementById("itemQuantityError"),
-    isPositiveInteger(quantity.value) ? "" : "Quantity must be a whole number of at least 1.") && valid;
-
-  valid = setFieldError(location, document.getElementById("itemLocationError"),
-    isRequired(location.value) ? "" : "Please provide a location.") && valid;
-
-  valid = setFieldError(urgency, document.getElementById("itemUrgencyError"),
-    isRequired(urgency.value) ? "" : "Please select an urgency level.") && valid;
-
-  return valid;
-}
-
-function collectRequestItemsData() {
-  return {
-    requestType: "resource",
-    category: document.getElementById("itemCategory").value,
-    description: document.getElementById("itemDescription").value.trim(),
-    quantity: Number(document.getElementById("itemQuantity").value),
-    location: document.getElementById("itemLocation").value.trim(),
-    urgency: document.getElementById("itemUrgency").value,
-    additionalInfo: document.getElementById("itemAdditional").value.trim(),
-  };
-}
+})();

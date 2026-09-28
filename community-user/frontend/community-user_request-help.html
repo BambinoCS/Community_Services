@@ -100,14 +100,40 @@
     }
 
     .notice {
-      display: none;
       margin-top: 24px;
       padding: 16px 18px;
       border-radius: 10px;
       background: #ffffff;
       color: #374151;
       border: 1px solid #e5e7eb;
+      line-height: 1.6;
     }
+
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    a { color: #1d4ed8; }
+    button, input, select, textarea { font: inherit; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 3px solid #2563eb; outline-offset: 3px;
+    }
+    button:disabled { opacity: .65; cursor: wait; }
+    .request-dialog { margin: auto; width: min(650px, calc(100% - 24px)); max-height: 90vh; padding: 28px; border: 0; border-radius: 18px; color: #1f2937; overflow: auto; }
+    .request-dialog::backdrop { background: #11182799; }
+    .dialog-heading { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 12px; }
+    .dialog-heading h2 { font-size: 1.5rem; }
+    .request-dialog p { line-height: 1.6; margin-bottom: 16px; }
+    .request-dialog fieldset { border: 0; min-width: 0; }
+    .field { margin: 18px 0; }
+    .field label { display: block; font-weight: bold; margin-bottom: 8px; }
+    .field input, .field select, .field textarea { display: block; width: 100%; padding: 11px 12px; border: 1px solid #94a3b8; border-radius: 8px; color: #1f2937; background: #fff; }
+    .field textarea { resize: vertical; min-height: 100px; }
+    .field small { display: block; color: #4b5563; line-height: 1.5; margin-top: 6px; }
+    .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+    .request-dialog button { padding: 11px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #111827; cursor: pointer; }
+    .request-dialog .primary-button { background: #111827; color: #fff; border-color: #111827; }
+    .form-message { padding: 12px; border-radius: 8px; background: #fef2f2; color: #991b1b; }
+    .request-dialog .saving-message { margin: 16px 0 0; }
+    @media (max-width: 480px) { .request-dialog { padding: 20px; } .field-row { grid-template-columns: 1fr; gap: 0; } header { padding: 18px; } }
   </style>
 <style>
 [hidden] { display:none !important; }
@@ -136,6 +162,8 @@
   <script defer src="../../shared/frontend/supabase-client.js"></script>
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
+  <script defer src="../../shared/frontend/service-requests.js"></script>
+  <script defer src="community-user_request-help.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
 </head>
@@ -146,19 +174,20 @@
 <div class="auth-account"><span data-auth-name></span><button type="button" data-auth-logout>Sign out</button></div>
   <header>
     <a class="back-link" href="community-user_dashboard.html">← Back to Dashboard</a>
+    <a href="community-user_requests.html">My Requests</a>
   </header>
 
   <main>
     <section class="page-heading">
       <h1>Request Help</h1>
       <p>
-        Select the type of help you need. The detailed forms and backend logic
-        for these options can be connected later.
+        Request a community service and follow its progress in My Requests.
+        Problem reports and requests for items are coming later.
       </p>
     </section>
 
     <section class="help-grid">
-      <button class="help-card" data-feature="Report a Problem">
+      <button type="button" class="help-card" data-feature="report-problem">
         <h2>Report a Problem</h2>
         <p>
           Report a community issue, platform issue, safety concern, or another
@@ -166,7 +195,7 @@
         </p>
       </button>
 
-      <button class="help-card" data-feature="Request Service">
+      <button type="button" class="help-card" data-feature="request-service">
         <h2>Request Service</h2>
         <p>
           Ask for approved assistance such as delivery, accompaniment,
@@ -174,7 +203,7 @@
         </p>
       </button>
 
-      <button class="help-card" data-feature="Request New Items">
+      <button type="button" class="help-card" data-feature="request-items">
         <h2>Request New Items</h2>
         <p>
           Request food, water, clothing, school supplies, household goods, or
@@ -183,8 +212,76 @@
       </button>
     </section>
 
-    <div id="notice" class="notice"></div>
+    <div id="notice" class="notice" role="status" tabindex="-1" hidden></div>
   </main>
+
+  <dialog id="requestServiceModal" class="request-dialog" aria-labelledby="service-dialog-title" aria-describedby="service-dialog-description">
+    <div class="dialog-heading">
+      <h2 id="service-dialog-title">Request a service</h2>
+      <button type="button" id="close-service-dialog" aria-label="Close service request">Close</button>
+    </div>
+    <p id="service-dialog-description">Tell an assistant what you need and when. All fields are required except additional information. Your preferred time is a request, and depends on an assistant accepting the job.</p>
+    <p id="service-account-notice" class="notice" hidden></p>
+    <form id="requestServiceForm">
+      <fieldset id="service-fields" disabled>
+        <div class="field">
+          <label for="serviceCategory">Service category</label>
+          <select id="serviceCategory" name="category" required>
+            <option value="">Choose a service</option>
+            <option value="food_water_delivery">Food / water delivery</option>
+            <option value="grocery_collection">Grocery collection</option>
+            <option value="elderly_assistance">Elderly assistance</option>
+            <option value="public_transport_assistance">Help reaching public transport</option>
+            <option value="healthcare_facility_assistance">Help reaching healthcare facilities</option>
+            <option value="donated_resource_delivery">Deliver donated resources</option>
+            <option value="other_approved_service">Other approved community services</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="serviceDescription">What do you need help with?</label>
+          <textarea id="serviceDescription" name="description" rows="4" maxlength="1000" required aria-describedby="service-description-hint"></textarea>
+          <small id="service-description-hint">Describe the assistance you need in up to 1,000 characters.</small>
+        </div>
+        <div class="field">
+          <label for="serviceLocation">Location</label>
+          <input id="serviceLocation" name="location" type="text" maxlength="200" required aria-describedby="service-location-hint" />
+          <small id="service-location-hint">Give an area or meeting point. Up to 200 characters.</small>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="servicePreferredDate">Preferred date</label>
+            <input id="servicePreferredDate" name="preferredDate" type="date" required aria-describedby="service-time-hint" />
+          </div>
+          <div class="field">
+            <label for="servicePreferredTime">Preferred time</label>
+            <input id="servicePreferredTime" name="preferredTime" type="time" required aria-describedby="service-time-hint" />
+          </div>
+        </div>
+        <p id="service-time-hint">Dates and times are in South African Standard Time (SAST).</p>
+        <div class="field">
+          <label for="serviceUrgency">Urgency</label>
+          <select id="serviceUrgency" name="urgency" required aria-describedby="service-urgency-hint">
+            <option value="">Choose urgency</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <small id="service-urgency-hint">This service does not provide emergency response.</small>
+        </div>
+        <div class="field">
+          <label for="serviceAdditional">Additional information (optional)</label>
+          <textarea id="serviceAdditional" name="additionalInfo" rows="3" maxlength="1000" aria-describedby="service-additional-hint"></textarea>
+          <small id="service-additional-hint">Any other details that will help an assistant prepare. Up to 1,000 characters.</small>
+        </div>
+        <div class="form-actions">
+          <button type="button" id="cancel-service-request">Cancel</button>
+          <button type="submit" id="submit-service-request" class="primary-button">Submit request</button>
+        </div>
+      </fieldset>
+      <p id="requestServiceMessage" class="form-message" role="alert" tabindex="-1" hidden></p>
+      <p id="service-saving-message" class="saving-message" role="status" hidden>Submitting your request…</p>
+    </form>
+  </dialog>
 
   <button
     id="helplineButton"
@@ -196,7 +293,6 @@
     ?
   </button>
 
-  <script src="community-user_request-help.js"></script>
 </div>
 </body>
 </html>

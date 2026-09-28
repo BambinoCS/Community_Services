@@ -1,0 +1,396 @@
+/*
+ * Executes the real migrations and RPCs against a disposable PostgreSQL engine.
+ * Install @electric-sql/pglite outside the repository, then either set NODE_PATH
+ * to its node_modules directory or use SERVICE_TEST_PGLITE to its package path:
+ *   node --test shared/tests/service-database.test.cjs
+ * No network/database credentials are read and no deployed database is touched.
+ * PGlite serializes connections: these tests verify SQL, RLS, permissions,
+ * rollback and competing operations, but not cross-connection lock scheduling.
+ */
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { randomUUID } = require('node:crypto');
+const { PGlite } = require(process.env.SERVICE_TEST_PGLITE || '@electric-sql/pglite');
+
+const ids = {
+  owner: '10000000-0000-4000-8000-000000000001',
+  stranger: '10000000-0000-4000-8000-000000000002',
+  assistant: '10000000-0000-4000-8000-000000000003',
+  secondAssistant: '10000000-0000-4000-8000-000000000004',
+  pending: '10000000-0000-4000-8000-000000000005',
+  admin: '10000000-0000-4000-8000-000000000006',
+  organisation: '10000000-0000-4000-8000-000000000007'
+};
+let db;
+let today;
+let yesterday;
+
+before(async () => {
+  db = new PGlite();
+  await db.exec(`
+    create role anon nologin;
+    create role authenticated nologin;
+    create schema auth;
+    create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb);
+    create function auth.uid() returns uuid language sql stable as $$
+      select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    $$;
+    grant usage on schema public, auth to anon, authenticated;
+    grant execute on function auth.uid() to anon, authenticated;
+  `);
+  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_service_request_workflow.sql']) {
+    await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations', name), 'utf8'));
+  }
+  for (const id of Object.values(ids)) await db.query('insert into auth.users(id) values ($1)', [id]);
+  await db.query("update public.profiles set role = 'assistant' where id = any($1::uuid[])",
+    [[ids.assistant, ids.secondAssistant, ids.pending]]);
+  await db.query("update public.profiles set role = 'admin' where id = $1", [ids.admin]);
+  await db.query("update public.profiles set role = 'organisation' where id = $1", [ids.organisation]);
+  for (const id of [ids.assistant, ids.secondAssistant]) {
+    await db.query("insert into public.assistants(user_id, verification_status, training_status) values ($1, 'verified', 'completed')", [id]);
+  }
+  await db.query('insert into public.assistants(user_id) values ($1)', [ids.pending]);
+  await db.query('insert into public.developer_accounts(user_id) values ($1)', [ids.admin]);
+  const dates = (await db.query(`select
+    to_char(timezone('Africa/Johannesburg', now())::date, 'YYYY-MM-DD') as today,
+    to_char(timezone('Africa/Johannesburg', now())::date - 1, 'YYYY-MM-DD') as yesterday`)).rows[0];
+  today = dates.today;
+  yesterday = dates.yesterday;
+});
+
+after(async () => { if (db) await db.close(); });
+
+async function asUser(id) {
+  await db.exec('set local role authenticated');
+  await db.query("select set_config('request.jwt.claim.sub', $1, true)", [id || '']);
+}
+
+async function trusted() { await db.exec('reset role'); }
+
+function databaseTest(name, fn) {
+  test(name, async () => {
+    await db.exec('begin');
+    try { await fn(); }
+    finally { await db.exec('rollback'); }
+  });
+}
+
+async function expectFailure(action, code) {
+  await db.exec('savepoint expected_failure');
+  let failure;
+  try { await action(); }
+  catch (error) { failure = error; }
+  await db.exec('rollback to savepoint expected_failure; release savepoint expected_failure');
+  assert.ok(failure, 'Operation unexpectedly succeeded');
+  assert.equal(failure.code, code, failure.message);
+  return failure;
+}
+
+async function create(overrides = {}) {
+  const fields = {
+    category: 'grocery_collection', description: 'Collect groceries for my household.',
+    location: 'Community centre, Soweto', date: today, time: '10:30',
+    urgency: 'medium', additional: null, id: randomUUID(), ...overrides
+  };
+  return (await db.query(`select * from public.create_service_request(
+    $1::text, $2::text, $3::text, $4::date, $5::time, $6::text, $7::text, $8::uuid
+  )`, [fields.category, fields.description, fields.location, fields.date, fields.time,
+    fields.urgency, fields.additional, fields.id])).rows[0];
+}
+
+async function rpc(action, id) {
+  assert.ok(['accept', 'cancel', 'start', 'complete'].includes(action));
+  return (await db.query(`select * from public.${action}_service_request($1::uuid)`, [id])).rows[0];
+}
+
+async function requestAndAssignment(id) {
+  return (await db.query(`select r.status, ass.status as assignment_status, ass.completed_at
+    from public.requests r left join public.assignments ass on ass.request_id = r.id
+    where r.id = $1`, [id])).rows[0];
+}
+
+databaseTest('full service flow derives identity and keeps request and assignment states together', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  assert.equal(request.user_id, ids.owner);
+  assert.equal(request.request_type, 'service');
+  assert.equal(request.status, 'open');
+  await asUser(ids.assistant);
+  assert.equal((await rpc('accept', request.id)).status, 'assigned');
+  assert.deepEqual(await requestAndAssignment(request.id), { status: 'assigned', assignment_status: 'assigned', completed_at: null });
+  assert.equal((await rpc('start', request.id)).status, 'in_progress');
+  assert.deepEqual(await requestAndAssignment(request.id), { status: 'in_progress', assignment_status: 'in_progress', completed_at: null });
+  assert.equal((await rpc('complete', request.id)).status, 'completed');
+  await asUser(ids.owner);
+  const completed = await requestAndAssignment(request.id);
+  assert.equal(completed.status, 'completed');
+  assert.equal(completed.assignment_status, 'completed');
+  assert.ok(completed.completed_at);
+});
+
+databaseTest('request and assignment SELECT policies do not recurse or expose other members data', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  await asUser(ids.stranger);
+  assert.equal((await db.query('select * from public.requests')).rows.length, 0);
+  await asUser(ids.pending);
+  assert.equal((await db.query('select * from public.requests')).rows.length, 0);
+  await asUser(ids.secondAssistant);
+  assert.equal((await db.query('select * from public.requests')).rows.length, 1);
+  await asUser(ids.assistant);
+  await rpc('accept', request.id);
+  assert.equal((await db.query('select * from public.assignments')).rows.length, 1);
+  await asUser(ids.secondAssistant);
+  assert.equal((await db.query('select * from public.requests')).rows.length, 0);
+  assert.equal((await db.query('select * from public.assignments')).rows.length, 0);
+  await asUser(ids.owner);
+  assert.equal((await db.query('select * from public.assignments')).rows.length, 1);
+  await asUser(ids.admin);
+  assert.equal((await db.query('select * from public.requests')).rows.length, 1);
+  assert.equal((await db.query('select * from public.assignments')).rows.length, 1);
+});
+
+databaseTest('all direct browser lifecycle writes are forbidden', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  for (const role of ['authenticated', 'anon']) {
+    await trusted();
+    await db.exec(`set local role ${role}`);
+    for (const sql of [
+      `insert into public.requests(user_id, request_type, category, description) values ('${ids.owner}', 'service', 'x', 'x')`,
+      `update public.requests set status = 'completed' where id = '${request.id}'`,
+      `update public.requests set user_id = '${ids.stranger}' where id = '${request.id}'`,
+      `delete from public.requests where id = '${request.id}'`,
+      "insert into public.assignments(request_id, assistant_id) values (gen_random_uuid(), gen_random_uuid())",
+      "update public.assignments set status = 'completed'",
+      'delete from public.assignments'
+    ]) await expectFailure(() => db.exec(sql), '42501');
+  }
+});
+
+databaseTest('anonymous RPCs and missing authenticated identity cannot act', async () => {
+  await db.exec('set local role anon');
+  await expectFailure(() => create(), '42501');
+  for (const action of ['accept', 'cancel', 'start', 'complete']) {
+    await expectFailure(() => rpc(action, randomUUID()), '42501');
+  }
+  await asUser(null);
+  await expectFailure(() => create(), '42501');
+  for (const action of ['accept', 'cancel', 'start', 'complete']) {
+    await expectFailure(() => rpc(action, randomUUID()), '42501');
+  }
+});
+
+databaseTest('creation requires actual community role, including developer view accounts', async () => {
+  for (const user of [ids.assistant, ids.admin, ids.organisation]) {
+    await asUser(user);
+    await expectFailure(() => create(), '42501');
+  }
+});
+
+databaseTest('server rejects invalid categories, lengths, urgency, dates, time and request references', async () => {
+  await asUser(ids.owner);
+  for (const fields of [
+    { category: null }, { category: 'invented' }, { category: '' },
+    { description: null }, { description: '  ' }, { description: 'x'.repeat(1001) },
+    { location: null }, { location: '' }, { location: 'x'.repeat(201) },
+    { additional: 'x'.repeat(1001) }, { urgency: null }, { urgency: 'critical' },
+    { date: null }, { date: yesterday }, { date: 'infinity' },
+    { time: null }, { time: '24:00' }, { id: null }
+  ]) await expectFailure(() => create(fields), '22023');
+  assert.equal((await db.query('select count(*)::int as count from public.requests')).rows[0].count, 0);
+});
+
+databaseTest('creation normalizes text, accepts boundary lengths and all approved categories', async () => {
+  await asUser(ids.owner);
+  for (const category of ['food_water_delivery', 'grocery_collection', 'elderly_assistance',
+    'public_transport_assistance', 'healthcare_facility_assistance', 'donated_resource_delivery', 'other_approved_service']) {
+    const request = await create({ category, description: 'x'.repeat(1000), location: 'x'.repeat(200), additional: 'x'.repeat(1000) });
+    assert.equal(request.category, category);
+  }
+  const request = await create({ category: ' grocery_collection ', description: ' x ', location: ' y ', additional: '  ' });
+  assert.equal(request.description, 'x');
+  assert.equal(request.location, 'y');
+  assert.equal(request.additional_info, null);
+});
+
+databaseTest('same nonce and content return the same row, even after completion', async () => {
+  await asUser(ids.owner);
+  const id = randomUUID();
+  const first = await create({ id });
+  const second = await create({ id });
+  assert.equal(first.id, second.id);
+  assert.equal(String(first.created_at), String(second.created_at));
+  assert.equal((await db.query('select count(*)::int as count from public.requests')).rows[0].count, 1);
+  await asUser(ids.assistant);
+  await rpc('accept', id); await rpc('start', id); await rpc('complete', id);
+  await asUser(ids.owner);
+  assert.equal((await create({ id })).status, 'completed');
+});
+
+databaseTest('idempotent replay still succeeds when the original preferred date has passed', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  await trusted();
+  await db.query('update public.requests set preferred_date = $1::date where id = $2::uuid', [yesterday, request.id]);
+  await asUser(ids.owner);
+  assert.equal((await create({ id: request.id, date: yesterday })).id, request.id);
+});
+
+databaseTest('nonce changes and foreign nonce collisions return a safe error without leaking a row', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  let mismatch;
+  for (const fields of [{ description: 'Changed' }, { category: 'elderly_assistance' }, { location: 'Elsewhere' },
+    { date: '2099-12-31' }, { time: '11:30' }, { urgency: 'high' }, { additional: 'Changed' }]) {
+    mismatch = await expectFailure(() => create({ id: request.id, ...fields }), 'P0001');
+  }
+  await asUser(ids.stranger);
+  const foreign = await expectFailure(() => create({ id: request.id }), 'P0001');
+  assert.equal(foreign.message, mismatch.message);
+  assert.equal((await db.query('select * from public.requests')).rows.length, 0);
+});
+
+databaseTest('server generates a request UUID when the optional nonce is omitted', async () => {
+  await asUser(ids.owner);
+  const result = (await db.query(`select * from public.create_service_request(
+    'grocery_collection', 'Collect groceries', 'Community centre', $1::date, '10:30', 'low')`, [today])).rows[0];
+  assert.match(result.id, /^[a-f0-9-]{36}$/);
+  assert.equal(result.user_id, ids.owner);
+});
+
+databaseTest('acceptance requires both trusted eligibility states', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  for (const verification of ['pending', 'verified', 'rejected', 'suspended']) {
+    for (const training of ['not_started', 'in_progress', 'completed']) {
+      if (verification === 'verified' && training === 'completed') continue;
+      await trusted();
+      await db.query('update public.assistants set verification_status = $1, training_status = $2 where user_id = $3', [verification, training, ids.pending]);
+      await asUser(ids.pending);
+      await expectFailure(() => rpc('accept', request.id), '42501');
+    }
+  }
+  await asUser(ids.admin);
+  await expectFailure(() => rpc('accept', request.id), '42501');
+});
+
+databaseTest('a verified assistant cannot accept their own request', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  await trusted();
+  await db.query("insert into public.assistants(user_id, verification_status, training_status) values ($1, 'verified', 'completed')", [ids.owner]);
+  await asUser(ids.owner);
+  await expectFailure(() => rpc('accept', request.id), '42501');
+});
+
+databaseTest('only the assigned, still eligible assistant can start or complete a request', async () => {
+  await asUser(ids.owner);
+  const request = await create();
+  await asUser(ids.assistant); await rpc('accept', request.id);
+  for (const user of [ids.owner, ids.secondAssistant, ids.admin]) {
+    await asUser(user);
+    for (const action of ['start', 'complete']) await expectFailure(() => rpc(action, request.id), '42501');
+  }
+  await trusted();
+  await db.query("update public.assistants set verification_status = 'suspended' where user_id = $1", [ids.assistant]);
+  await asUser(ids.assistant);
+  await expectFailure(() => rpc('start', request.id), '42501');
+});
+
+databaseTest('status transitions cannot be skipped or repeated', async () => {
+  await asUser(ids.owner); const request = await create();
+  await asUser(ids.assistant); await rpc('accept', request.id);
+  await expectFailure(() => rpc('complete', request.id), 'P0001');
+  await expectFailure(() => rpc('accept', request.id), 'P0001');
+  await rpc('start', request.id);
+  await expectFailure(() => rpc('start', request.id), 'P0001');
+  await rpc('complete', request.id);
+  await expectFailure(() => rpc('complete', request.id), 'P0001');
+});
+
+databaseTest('only owner can cancel an open request, and acceptance prevents cancellation', async () => {
+  await asUser(ids.owner); const first = await create(); const second = await create();
+  await asUser(ids.stranger); await expectFailure(() => rpc('cancel', first.id), '42501');
+  await asUser(ids.assistant); await rpc('accept', second.id);
+  await asUser(ids.owner);
+  await expectFailure(() => rpc('cancel', second.id), 'P0001');
+  assert.equal((await rpc('cancel', first.id)).status, 'cancelled');
+  await expectFailure(() => rpc('cancel', first.id), 'P0001');
+  await asUser(ids.assistant); await expectFailure(() => rpc('accept', first.id), 'P0001');
+});
+
+databaseTest('competing accepts leave exactly one assignment, for the first winner', async () => {
+  await asUser(ids.owner); const request = await create();
+  await asUser(ids.assistant); await rpc('accept', request.id);
+  await asUser(ids.secondAssistant); await expectFailure(() => rpc('accept', request.id), 'P0001');
+  await asUser(ids.owner);
+  const assignments = (await db.query('select ass.*, a.user_id from public.assignments ass join public.assistants a on a.id = ass.assistant_id where ass.request_id = $1', [request.id])).rows;
+  // Requesters cannot read another user's assistant record; inspect as trusted.
+  assert.equal(assignments.length, 0);
+  await trusted();
+  const winner = (await db.query('select a.user_id from public.assignments ass join public.assistants a on a.id = ass.assistant_id where ass.request_id = $1', [request.id])).rows;
+  assert.deepEqual(winner, [{ user_id: ids.assistant }]);
+});
+
+databaseTest('service RPCs cannot mutate resource requests', async () => {
+  const id = randomUUID();
+  await db.query("insert into public.requests(id, user_id, request_type, category, description) values ($1, $2, 'resource', 'food', 'Food')", [id, ids.owner]);
+  await asUser(ids.owner); await expectFailure(() => rpc('cancel', id), '42501');
+  await asUser(ids.assistant);
+  await expectFailure(() => rpc('accept', id), 'P0001');
+  for (const action of ['start', 'complete']) await expectFailure(() => rpc(action, id), '42501');
+});
+
+databaseTest('an inconsistent legacy assignment cannot be overwritten by accept or cancel', async () => {
+  await asUser(ids.owner); const request = await create();
+  await trusted();
+  await db.query("insert into public.assignments(request_id, assistant_id) select $1, id from public.assistants where user_id = $2", [request.id, ids.secondAssistant]);
+  await asUser(ids.assistant); await expectFailure(() => rpc('accept', request.id), 'P0001');
+  await asUser(ids.owner); await expectFailure(() => rpc('cancel', request.id), 'P0001');
+  assert.equal((await requestAndAssignment(request.id)).status, 'open');
+});
+
+databaseTest('failed request updates roll back assignment creation and later assignment transitions', async () => {
+  await asUser(ids.owner); const request = await create();
+  await trusted();
+  await db.exec(`create function public.test_fail_request_update() returns trigger language plpgsql as $$
+    begin raise exception 'Injected request update failure'; end;
+  $$;
+  create trigger test_fail_request_update before update on public.requests
+    for each row execute function public.test_fail_request_update();`);
+  await asUser(ids.assistant);
+  await expectFailure(() => rpc('accept', request.id), 'P0001');
+  await asUser(ids.owner);
+  assert.deepEqual(await requestAndAssignment(request.id), { status: 'open', assignment_status: null, completed_at: null });
+  await trusted(); await db.exec('alter table public.requests disable trigger test_fail_request_update');
+  await asUser(ids.assistant); await rpc('accept', request.id);
+  await trusted(); await db.exec('alter table public.requests enable trigger test_fail_request_update');
+  await asUser(ids.assistant); await expectFailure(() => rpc('start', request.id), 'P0001');
+  assert.deepEqual(await requestAndAssignment(request.id), { status: 'assigned', assignment_status: 'assigned', completed_at: null });
+  await trusted(); await db.exec('alter table public.requests disable trigger test_fail_request_update');
+  await asUser(ids.assistant); await rpc('start', request.id);
+  await trusted(); await db.exec('alter table public.requests enable trigger test_fail_request_update');
+  await asUser(ids.assistant); await expectFailure(() => rpc('complete', request.id), 'P0001');
+  assert.deepEqual(await requestAndAssignment(request.id), { status: 'in_progress', assignment_status: 'in_progress', completed_at: null });
+});
+
+databaseTest('private helpers are identity-bound and private mutation helper cannot be executed by the browser', async () => {
+  await asUser(ids.owner); const request = await create();
+  await asUser(ids.stranger);
+  assert.deepEqual((await db.query('select private.owns_request($1) as owns, private.is_assigned_to_request($1) as assigned', [request.id])).rows[0], { owns: false, assigned: false });
+  await expectFailure(() => db.query("select private.advance_service_request($1, 'completed')", [request.id]), '42501');
+  await trusted();
+  const functions = (await db.query(`select p.proname, p.prosecdef, p.proconfig
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where (n.nspname = 'public' and p.proname in ('create_service_request', 'accept_service_request',
+      'cancel_service_request', 'start_service_request', 'complete_service_request'))
+      or (n.nspname = 'private' and p.proname in ('owns_request', 'is_assigned_to_request', 'advance_service_request'))`)).rows;
+  assert.equal(functions.length, 8);
+  for (const fn of functions) {
+    assert.equal(fn.prosecdef, true);
+    assert.deepEqual(fn.proconfig, ['search_path=""']);
+  }
+});

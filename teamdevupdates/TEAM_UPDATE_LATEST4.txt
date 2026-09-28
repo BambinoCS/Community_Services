@@ -1,0 +1,107 @@
+COMMUNITY SERVICES - SERVICE REQUEST WORKFLOW
+Date: 2026-09-28
+Feature: Community submission through assistant job completion
+Sequence: Continues TEAM_UPDATE_LATEST0.txt through TEAM_UPDATE_LATEST3.txt.
+
+TEAM SUMMARY
+The approved service-request flow is implemented locally. A community member can
+submit a service request and track it in My Requests. A verified assistant with
+completed training can accept it, start it in Active Jobs, and complete it.
+Completed Jobs and the member's My Requests show the saved status on Refresh.
+Owners can cancel only while a request is open and unassigned.
+
+IMPORTANT: Migration 004 has NOT been applied to the live Supabase project.
+No commits, pushes or deployment were performed. The live website will need the
+migration and updated frontend before this feature is ready for real users.
+
+IMPLEMENTATION
+- Accessible service request dialog with category, description, location,
+  preferred date/time, urgency and optional additional information.
+- Required fields, length limits, whitespace checks and SAST date validation.
+- Loading/error feedback; failed submission retains entered details. Retrying
+  unchanged details uses the same UUID to avoid duplicate creation after a lost
+  response. A new edit starts a new submission identity.
+- Saved requests, available requests, active jobs and completed jobs use Supabase.
+- Refresh, Previous/Next pagination (50 records), filters on the current page,
+  confirmation before transitions, and safe text rendering for user content.
+- Assistant dashboard reads actual account eligibility and provides workflow links.
+  Availability remains read-only. Developer previews cannot elevate permissions.
+- Relevant community/assistant links and script filenames repaired.
+- Resource/problem request cards honestly show that those features are not ready.
+
+DATABASE AND PERMISSIONS
+New migration: shared/supabase/migrations/004_service_request_workflow.sql
+RPCs: create_service_request, accept_service_request, cancel_service_request,
+      start_service_request, complete_service_request.
+- Server derives identity from auth.uid(); no client-supplied owner/role accepted.
+- Creation requires actual community_user role and validates all request fields.
+- Accept requires verified + completed training; self-acceptance is forbidden.
+- Only the assigned, still eligible assistant can start or complete a job.
+- Row locks and the unique request assignment constraint protect acceptance;
+  request/assignment changes occur together and roll back together on error.
+- Identity-bound private helpers replace recursive request/assignment RLS reads.
+- Browser roles get SELECT only on requests/assignments; writes use these RPCs.
+  Resource/problem workflows will need their own controlled write implementation.
+- Reusing a creation UUID requires the same owner and unchanged request fields.
+
+FILES ADDED
+shared/frontend/service-requests.js - shared Supabase request API and safe errors.
+shared/frontend/service-request-page.js - list rendering, paging and transitions.
+shared/supabase/migrations/004_service_request_workflow.sql - workflow and RLS.
+shared/tests/service-database.test.cjs - disposable PostgreSQL engine checks.
+shared/tests/service-browser.cjs - mocked backend browser lifecycle checks.
+teamdevupdates/TEAM_UPDATE_LATEST4.txt - this sequential team handoff.
+
+FILES UPDATED
+community-user/frontend/community-user_request-help.html and .js
+community-user/frontend/community-user_requests.html and .js
+community-user/frontend/community-user_dashboard.html
+community-user/frontend/community-user_browse-requests.html
+verified-assistant/frontend/verified_assistant_available_requests.html and .js
+verified-assistant/frontend/verified_assistant_active_jobs.html and .js
+verified-assistant/frontend/verified_assistant_completed_jobs.html and .js
+verified-assistant/frontend/verified_assistant_dashboard.html and .js
+verified-assistant/frontend/verified_assistant_profile.html
+verified-assistant/frontend/verified_assistant_training.html
+shared/frontend/auth.js - reads assistant ID and availability for workflow pages.
+README.md - setup, scope, verification and latest handoff.
+
+VERIFICATION COMPLETED
+PASS: node --test shared/tests/auth.test.cjs - 10 tests.
+PASS: node shared/tests/auth-browser.cjs - 29 browser scenarios, including two
+  real pinned SDK scenarios with mocked HTTP; no live account operations.
+PASS: node shared/tests/service-browser.cjs - 13 mobile browser scenarios:
+  full lifecycle across accounts, cancellation, stale competing acceptance,
+  lost creation response/retry without duplicates, whitespace validation,
+  failed reads/writes, failed refresh after a successful action, self exclusion,
+  developer/pending/anonymous access, XSS-safe rendering and pagination.
+PASS: node --test shared/tests/service-database.test.cjs - 21 tests running the
+  real SQL in PGlite, covering permissions, RLS reads, direct-write rejection,
+  validation, creation retries, eligibility, ownership, transitions and rollback.
+PASS: node shared/tests/check-auth-static.cjs - JavaScript syntax, 27 HTML pages,
+  guard/link/script checks and frontend private-key scan.
+PASS: git diff --check.
+Mobile form screenshot inspected at test-results/service-form-mobile.png
+(ignored test artifact); form scrolls within the viewport without horizontal overflow.
+
+TEST LIMITS AND LIVE ACTIVATION
+Browser workflow tests mock Supabase. SQL tests use a disposable PGlite engine
+installed outside the repository; PGlite serializes connections. These checks do
+not establish live PostgREST integration or simultaneous PostgreSQL lock behavior.
+1. Apply migrations 001-003 if needed, then 004 in trusted Supabase SQL Editor.
+2. Deploy the updated static files with the existing public configuration.
+3. Use separate real community and verified/trained assistant accounts to test
+   create -> accept -> start -> complete, plus owner cancellation while open.
+4. Check two assistants accepting simultaneously, accept versus cancel,
+   eligibility revocation, direct-write denial, and visibility under real RLS.
+5. Verify deployed GitHub Pages navigation and mobile browser behavior.
+No service-role key belongs in the browser; existing public configuration remains.
+
+REMAINING SCOPE
+No realtime updates, notifications, donation integration, resource/problem flow,
+admin verification/training management, availability editing or analytics added.
+One known existing admin script reference remains missing:
+admin/frontend/admin_verify_assistants.html -> admin_verify-assistants.js.
+Auth/email/profile Storage live checks from earlier updates remain outstanding.
+Historical updates and MASTER_AI_TEAM_CONTEXT.txt were preserved. Team updates
+belong in teamdevupdates, regardless of older documents naming other locations.

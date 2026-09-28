@@ -43,7 +43,7 @@
     const db = getClient();
     const results = await Promise.all([
       db.from('profiles').select('id,first_name,last_name,phone,avatar_path,role').eq('id', identity.id).maybeSingle(),
-      db.from('assistants').select('verification_status,training_status').eq('user_id', identity.id).maybeSingle(),
+      db.from('assistants').select('id,user_id,verification_status,training_status,availability').eq('user_id', identity.id).maybeSingle(),
       db.from('developer_accounts').select('user_id').eq('user_id', identity.id).maybeSingle()
     ]);
     if (results.some((result) => result.error)) {

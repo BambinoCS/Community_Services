@@ -1,5 +1,34 @@
 # Community Services
 
+## Service request workflow
+
+Community members can submit a service request from Request Help and track it in
+My Requests. Verified assistants who completed training can accept an open request,
+start it from Active Jobs, and complete it. Completed Jobs and My Requests reflect
+the saved status after navigation or Refresh. Owners can cancel only open requests.
+
+Before using this feature, apply
+`shared/supabase/migrations/004_service_request_workflow.sql` in the trusted Supabase
+SQL Editor after migrations 001–003. This migration has **not** been applied to the
+live project by this implementation. Deploy the updated static files afterward.
+No Express server is needed for these pages. Test with separate real community and
+verified/trained assistant accounts before release.
+
+The migration adds create/accept/cancel/start/complete RPCs, derives identity from
+Auth, validates fields, prevents self-acceptance, locks requests during transitions,
+and updates assignments and requests together. A repeated creation with the same
+UUID and unchanged fields returns the existing request. Direct browser writes to
+requests and assignments are revoked; future resource/problem workflows need their
+own reviewed RPCs. Identity-bound policy helpers also remove recursive RLS reads.
+Developer Mode changes presentation only and cannot grant workflow permissions.
+
+Preferred dates/times use SAST; new requests require today or a future date. Lists
+load 50 records at a time; filters apply to the current page. Refresh retrieves
+changes from other users; there are no realtime subscriptions or notifications.
+Assistant dashboard eligibility comes from the signed-in account; availability is
+read-only. Donations, resource requests and problem reporting remain outside this
+feature. The latest team handoff is `teamdevupdates/TEAM_UPDATE_LATEST4.txt`.
+
 ## Personal profile (follow-up)
 
 The Profile button beside Sign out opens `profile.html` for every authenticated
@@ -23,8 +52,8 @@ handoff has been renamed to `teamdevupdates/TEAM_UPDATE_LATEST2.txt` in this che
 The Phase 1 notes below describe the earlier scope before this profile follow-up.
 
 HTML pages with inline CSS, separate JavaScript, and Supabase Auth/PostgreSQL/RLS.
-Phase 1 implements authentication and Developer Mode only. Business features are
-still placeholders. No database migrations or backend endpoints were added.
+Phase 1 implemented authentication and Developer Mode. The profile and service
+request sections above describe the subsequent implemented features.
 
 ## Configuration and local development
 
@@ -153,7 +182,7 @@ Browser regressions require the `playwright` package resolvable through Node and
 installed Microsoft Edge (`npm install --no-save --package-lock=false playwright`
 if unavailable). Run `node shared/tests/auth-browser.cjs`. Set `AUTH_TEST_BROWSER`
 to another installed Playwright Chromium channel if needed. The test starts and
-closes its own loopback server. There are 21 mocked-SDK scenarios and two scenarios
+closes its own loopback server. There are 27 mocked-SDK scenarios and two scenarios
 using the real pinned SDK with mocked HTTP responses. No real accounts are used.
 
 Live release checks still required: signup/profile trigger/default role; actual
@@ -163,23 +192,36 @@ SDK session expiry and cross-tab sign-out; developer membership grants and revoc
 direct RLS attempts with separate community, assistant, admin and developer accounts.
 Also test the deployed GitHub Pages redirects and mobile browsers.
 
+## Service workflow verification
+
+Run `node shared/tests/service-browser.cjs` with the same Playwright setup. It tests
+13 scenarios against a shared mocked backend, including the full lifecycle, stale
+acceptance, unchanged creation retries, errors, permissions, XSS, mobile layout and
+pagination. These tests do not contact the deployed Supabase project.
+
+Run `node --test shared/tests/service-database.test.cjs` with
+`@electric-sql/pglite` installed outside the repository. Set
+`SERVICE_TEST_PGLITE` to that package's absolute path, or make it available through
+`NODE_PATH`. The 21 tests execute the SQL in a disposable PostgreSQL engine,
+checking RLS, authorization, validation, idempotency, transitions and rollback.
+PGlite serializes connections, so true simultaneous connection/lock scheduling
+still needs verification on PostgreSQL/Supabase. No live migration was applied.
+
+Before release, apply migration 004 and repeat the full journey with real accounts,
+including competing acceptance from two assistants, acceptance versus cancellation,
+and eligibility revocation. Verify browser SDK/PostgREST RPC results and nested
+assignment reads against the deployed project, plus GitHub Pages navigation.
+
 ## Existing limitations and next work
 
-The original frontend handoff describes filenames and completed pages that differ
-from this checkout. Existing business script references are still missing on several
-pages; the static checker reports this known baseline explicitly. Several browser
-scripts are stored under `backend`, the shared validation file has no `.js` suffix,
-and the assistant-availability page was empty (now a guarded placeholder). These
-business implementations were not moved, repaired, or connected in this phase.
-Existing assistant status displays can still show placeholder data, independent
-of the trusted authorization checks. No new business write operations were added.
+The static checker reports one existing missing business script reference:
+`admin/frontend/admin_verify_assistants.html` references
+`admin_verify-assistants.js`. Admin verification/training management and other
+unconnected business screens still need their own implementation. The service
+workflow requires existing verified/trained assistant records; it does not grant
+these statuses. Relevant community/assistant navigation references were repaired.
 
-Team handoffs live in **`teamdevupdates/`**. The current Phase 1 submission is
-**`teamdevupdates/TEAM_UPDATE_LATEST3.txt`**; historical updates 0/1 and the master context
-remain intact. Older documents mentioning `shared/docs` or a root
-`TEAM_UPDATE_LATEST.txt` are stale.
-
-After live auth/RLS verification, agree on the request/assignment API contract and
-build the first service-request vertical slice, including atomic job acceptance.
-Requests, assignments, donations, reports, notifications, verification/application
-workflows, uploads and dashboard statistics were not integrated in Phase 1.
+Team handoffs live in **`teamdevupdates/`**. The current submission is
+**`teamdevupdates/TEAM_UPDATE_LATEST4.txt`**, continuing updates 0–3. Historical
+updates and master context remain intact. Older documents mentioning
+`shared/docs` or a root `TEAM_UPDATE_LATEST.txt` are stale.
