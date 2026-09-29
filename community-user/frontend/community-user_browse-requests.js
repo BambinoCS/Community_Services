@@ -1,373 +1,124 @@
-/**
- * community-user_browse-requests.js
- *
- * Loads open community requests from Supabase and lets donors filter them.
- *
- * Current privacy / matching rules:
- * - Only OPEN requests are shown.
- * - No requester name, phone, email, or UUID is displayed.
- * - Location is displayed and can be filtered.
- * - Location-based matching is NOT implemented yet.
- */
+(function () {
+  'use strict';
 
-"use strict";
+  const container = document.getElementById('requestsContainer');
+  const message = document.getElementById('browseMessage');
+  const refreshButton = document.getElementById('refreshRequests');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const urgencyFilter = document.getElementById('urgencyFilter');
+  const locationFilter = document.getElementById('locationFilter');
+  let rows = [];
+  let sequence = 0;
+  let loading = false;
 
-let allRequests = [];
+  function setMessage(text, kind) {
+    message.textContent = text;
+    message.className = 'message-banner' + (text ? ' show' : '') + (kind ? ' ' + kind : '');
+  }
 
-document.addEventListener("DOMContentLoaded", () => {
-  wireFilters();
-  loadRequests();
-});
+  function textElement(tag, text, className) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    element.textContent = text;
+    return element;
+  }
 
-// Your auth system also emits this after access is confirmed.
-// This gives the page another chance to load once authentication is ready.
-document.addEventListener("community:authenticated", loadRequests);
+  function matches(row) {
+    if (categoryFilter.value && row.category !== categoryFilter.value) return false;
+    if (urgencyFilter.value && row.urgency !== urgencyFilter.value) return false;
+    const area = locationFilter.value.trim().toLowerCase();
+    if (area && !(row.location || '').toLowerCase().includes(area)) return false;
+    return true;
+  }
 
-function wireFilters() {
-  ["categoryFilter", "requestTypeFilter", "urgencyFilter"].forEach((id) => {
-    const element = document.getElementById(id);
-
-    if (element) {
-      element.addEventListener("change", applyFilters);
+  function render() {
+    container.replaceChildren();
+    const filtered = rows.filter(matches);
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      const heading = document.createElement('h3');
+      heading.textContent = rows.length ? 'No matching requests' : 'No open item requests right now';
+      const body = document.createElement('p');
+      body.textContent = rows.length
+        ? 'Try widening the filters to see more requests.'
+        : 'When community members request items, they will appear here so you can decide what to donate.';
+      empty.append(heading, body);
+      container.append(empty);
+      return;
     }
-  });
-
-  const locationFilter = document.getElementById("locationFilter");
-
-  if (locationFilter) {
-    locationFilter.addEventListener("input", applyFilters);
-  }
-}
-
-async function loadRequests() {
-  const container = document.getElementById("requestsContainer");
-
-  if (!container) {
-    console.error("requestsContainer was not found.");
-    return;
-  }
-
-  renderLoadingState(container);
-
-  try {
-    const supabase = getSupabaseClient();
-
-    // Confirm that the user still has a valid authenticated session.
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser();
-
-    if (userError) {
-      throw userError;
+    for (const row of filtered) {
+      const card = document.createElement('article');
+      card.className = 'item-card';
+      const top = document.createElement('div');
+      top.className = 'item-card-top';
+      top.append(textElement('h3', ServiceRequests.categoryLabel('resource', row.category)));
+      top.append(textElement('span', 'Open', 'badge badge-open'));
+      card.append(top);
+      card.append(textElement('p', row.description, 'meta'));
+      if (row.quantity != null) card.append(textElement('p', 'Quantity needed: ' + row.quantity, 'meta'));
+      card.append(textElement('p', 'Location: ' + (row.location || 'Not provided'), 'meta'));
+      if (row.urgency) card.append(textElement('p', 'Urgency: ' + row.urgency, 'meta'));
+      if (row.additional_info) card.append(textElement('p', row.additional_info, 'meta'));
+      card.append(textElement('p', 'Requested: ' + new Date(row.created_at).toLocaleString(), 'meta'));
+      const directions = CommunityLocation.directionsUrl({ latitude: row.latitude, longitude: row.longitude, address: row.location });
+      if (directions) {
+        const link = document.createElement('a');
+        link.href = directions;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.className = 'btn btn-secondary btn-sm';
+        link.textContent = 'Get Directions';
+        card.append(link);
+      }
+      const donate = document.createElement('a');
+      donate.href = 'community-user_donate.html';
+      donate.className = 'btn btn-primary btn-sm';
+      donate.textContent = 'Donate This Item';
+      card.append(donate);
+      container.append(card);
     }
+  }
 
-    if (!user) {
-      throw new Error("Your session has expired. Please sign in again.");
+  async function load() {
+    const version = ++sequence;
+    loading = true;
+    refreshButton.disabled = true;
+    container.replaceChildren(textElement('p', 'Loading community requests…', 'loading-state'));
+    setMessage('');
+    try {
+      const state = await CommunityAuth.state();
+      if (!state) throw new Error('Please sign in to continue.');
+      const db = CommunityAuth.getClient();
+      const { data, error } = await db.from('requests')
+        .select('id,category,description,quantity,location,latitude,longitude,urgency,additional_info,status,created_at')
+        .eq('request_type', 'resource')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      if (version !== sequence) return;
+      rows = data || [];
+      loading = false;
+      refreshButton.disabled = false;
+      render();
+      if (rows.length) setMessage(rows.length + ' open request' + (rows.length === 1 ? '' : 's') + '. Donate what you can from the Donate page.', 'info');
+    } catch (error) {
+      if (version !== sequence) return;
+      loading = false;
+      refreshButton.disabled = false;
+      rows = [];
+      container.replaceChildren();
+      setMessage(error.message === 'Please sign in to continue.'
+        ? error.message
+        : 'Requests are unavailable right now. Check your connection and try again.', 'error');
     }
-
-    /*
-     * Load open community requests.
-     *
-     * IMPORTANT:
-     * This query will only work if your Supabase RLS policies allow
-     * authenticated users to read these non-sensitive open requests.
-     *
-     * If RLS blocks this, do NOT disable RLS.
-     * Later we can use a safe Supabase RPC that returns only approved fields.
-     */
-    const { data, error } = await supabase
-      .from("requests")
-      .select(`
-        id,
-        request_type,
-        category,
-        description,
-        location,
-        urgency,
-        status,
-        created_at
-      `)
-      .eq("status", "open")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      throw error;
-    }
-
-    allRequests = (data || []).map(normalizeRequest);
-
-    applyFilters();
-  } catch (error) {
-    console.error("Failed to load community requests:", error);
-
-    renderErrorState(
-      container,
-      "Unable to load community requests.",
-      getReadableError(error)
-    );
-  }
-}
-
-function normalizeRequest(request) {
-  return {
-    id: request.id,
-    requestType: request.request_type || "",
-    category: request.category || "",
-    description: request.description || "",
-    location: request.location || "",
-    urgency: request.urgency || "",
-    status: request.status || "",
-    createdAt: request.created_at || ""
-  };
-}
-
-function applyFilters() {
-  const category = getValue("categoryFilter");
-  const requestType = getValue("requestTypeFilter");
-  const urgency = getValue("urgencyFilter");
-  const location = getValue("locationFilter").toLowerCase();
-
-  const filtered = allRequests.filter((request) => {
-    const categoryMatches =
-      !category || request.category === category;
-
-    const typeMatches =
-      !requestType || request.requestType === requestType;
-
-    const urgencyMatches =
-      !urgency || request.urgency === urgency;
-
-    const locationMatches =
-      !location ||
-      String(request.location || "")
-        .toLowerCase()
-        .includes(location);
-
-    return (
-      categoryMatches &&
-      typeMatches &&
-      urgencyMatches &&
-      locationMatches
-    );
-  });
-
-  renderRequests(filtered);
-}
-
-function renderRequests(requests) {
-  const container = document.getElementById("requestsContainer");
-
-  if (!container) {
-    return;
   }
 
-  if (!requests || requests.length === 0) {
-    renderEmptyState(
-      container,
-      "No community requests are currently available.",
-      "Check back later, or adjust your filters."
-    );
+  refreshButton.addEventListener('click', () => { if (!loading) void load(); });
+  categoryFilter.addEventListener('change', render);
+  urgencyFilter.addEventListener('change', render);
+  locationFilter.addEventListener('input', render);
 
-    return;
-  }
-
-  container.innerHTML = requests
-    .map((request) => {
-      return `
-        <article class="item-card">
-          <div class="item-card-top">
-
-            <div>
-              <h3>
-                ${escapeHtml(formatLabel(request.category))}
-              </h3>
-
-              <p class="meta">
-                ${escapeHtml(formatLabel(request.requestType))} request
-              </p>
-            </div>
-
-            ${renderStatusBadge(
-              request.status,
-              REQUEST_STATUS_LABELS
-            )}
-
-          </div>
-
-          <p class="meta">
-            ${escapeHtml(request.description)}
-          </p>
-
-          ${
-            request.location
-              ? `
-                <p class="meta">
-                  <strong>Location:</strong>
-                  ${escapeHtml(request.location)}
-                </p>
-              `
-              : ""
-          }
-
-          ${
-            request.urgency
-              ? `
-                <p class="meta">
-                  <strong>Urgency:</strong>
-                  ${escapeHtml(formatLabel(request.urgency))}
-                </p>
-              `
-              : ""
-          }
-
-          <p class="meta">
-            <strong>Date:</strong>
-            ${escapeHtml(
-              formatRequestDate(request.createdAt)
-            )}
-          </p>
-
-        </article>
-      `;
-    })
-    .join("");
-}
-
-function renderLoadingState(container) {
-  if (typeof window.renderLoadingState === "function") {
-    window.renderLoadingState(
-      container,
-      "Loading community requests..."
-    );
-
-    return;
-  }
-
-  container.innerHTML = `
-    <div class="empty-state">
-      <p>Loading community requests...</p>
-    </div>
-  `;
-}
-
-function renderErrorState(container, title, detail) {
-  if (typeof window.renderErrorState === "function") {
-    window.renderErrorState(
-      container,
-      title,
-      detail
-    );
-
-    return;
-  }
-
-  container.innerHTML = `
-    <div class="empty-state">
-      <h3>${escapeHtml(title)}</h3>
-      <p>${escapeHtml(detail)}</p>
-    </div>
-  `;
-}
-
-function getSupabaseClient() {
-  /*
-   * Your shared Supabase setup may expose the client through
-   * getSupabaseClient().
-   */
-  if (typeof window.getSupabaseClient === "function") {
-    return window.getSupabaseClient();
-  }
-
-  /*
-   * Fallback in case your shared frontend exposes the initialized
-   * client directly as window.supabaseClient.
-   */
-  if (window.supabaseClient) {
-    return window.supabaseClient;
-  }
-
-  throw new Error(
-    "Supabase is not ready. Check shared/frontend/supabase-client.js."
-  );
-}
-
-function getValue(id) {
-  return (
-    document.getElementById(id)?.value || ""
-  ).trim();
-}
-
-function formatRequestDate(value) {
-  if (!value) {
-    return "Unknown";
-  }
-
-  // Use your existing shared helper when available.
-  if (typeof window.formatDate === "function") {
-    return window.formatDate(value);
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown";
-  }
-
-  return date.toLocaleDateString();
-}
-
-function formatLabel(value) {
-  if (!value) {
-    return "Other";
-  }
-
-  return String(value)
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (character) =>
-      character.toUpperCase()
-    );
-}
-
-function getReadableError(error) {
-  const message = String(
-    error?.message || ""
-  ).toLowerCase();
-
-  /*
-   * Supabase/PostgreSQL insufficient privilege / RLS.
-   */
-  if (
-    error?.code === "42501" ||
-    message.includes("row-level security")
-  ) {
-    return (
-      "The current database security policy does not allow " +
-      "this page to browse other users' open requests yet. " +
-      "A safe read policy or sanitized Supabase RPC is required."
-    );
-  }
-
-  if (
-    message.includes("jwt") ||
-    message.includes("session") ||
-    message.includes("not authenticated")
-  ) {
-    return (
-      "Your session may have expired. Please sign in again."
-    );
-  }
-
-  return "Please refresh the page and try again.";
-}
-
-/*
- * Prevent user-entered database content from being interpreted as HTML.
- */
-function escapeHtml(value) {
-  const element = document.createElement("div");
-
-  element.textContent = value ?? "";
-
-  return element.innerHTML;
-}
+  document.addEventListener('community:authenticated', () => { if (!loading && !rows.length) void load(); });
+})();

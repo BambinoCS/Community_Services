@@ -127,6 +127,7 @@
 
     .form-group { margin-bottom: 18px; }
     label { display: block; margin-bottom: 7px; font-weight: bold; font-size: 0.92rem; }
+    .filters-label { display: block; margin-bottom: 7px; font-weight: bold; font-size: 0.92rem; }
 
     input, textarea, select {
       width: 100%;
@@ -323,6 +324,8 @@
   <script defer src="../../shared/frontend/supabase-client.js"></script>
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
+  <script defer src="../../shared/frontend/service-requests.js"></script>
+  <script defer src="../../shared/frontend/location.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
 </head>
@@ -363,14 +366,6 @@
         </select>
       </div>
       <div class="form-group">
-        <label for="requestTypeFilter">Request Type</label>
-        <select id="requestTypeFilter">
-          <option value="">All types</option>
-          <option value="service">Service</option>
-          <option value="resource">Resource</option>
-        </select>
-      </div>
-      <div class="form-group">
         <label for="urgencyFilter">Urgency</label>
         <select id="urgencyFilter">
           <option value="">All urgencies</option>
@@ -383,7 +378,13 @@
         <label for="locationFilter">Location</label>
         <input type="text" id="locationFilter" placeholder="e.g. Hatfield" />
       </div>
+      <div class="form-group">
+        <span class="filters-label">Results</span>
+        <button type="button" id="refreshRequests" class="btn btn-secondary btn-block">Refresh</button>
+      </div>
     </div>
+
+    <p id="browseMessage" class="message-banner" role="status"></p>
 
     <section id="requestsContainer" class="grid">
       <!-- Populated by JS -->

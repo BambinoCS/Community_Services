@@ -111,8 +111,93 @@
       }
     }
 
-    .search-card{background:#fff;border-radius:18px;padding:28px;margin-bottom:24px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
-    .search-card h3{font-size:1.35rem;margin-bottom:8px}.search-card>p{color:#6b7280;line-height:1.5;margin-bottom:18px}.search-form{display:flex;gap:10px}.search-form input{flex:1;padding:13px;border:1px solid #d1d5db;border-radius:10px;font:inherit}.search-form button{border:0;border-radius:10px;padding:13px 18px;background:#111827;color:#fff;font-weight:700;cursor:pointer}.search-message{margin-top:14px;color:#6b7280}.donation-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px}.donation-result{border:1px solid #e5e7eb;border-radius:12px;padding:16px}.donation-result h4{margin-bottom:6px}.donation-result p{color:#6b7280;font-size:.9rem;margin:4px 0}.donation-result a{display:inline-block;margin-top:10px;color:#111827;font-weight:700;text-decoration:none}.donation-result a:hover{text-decoration:underline}@media(max-width:600px){.search-form{flex-direction:column}}
+    .search-section {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 28px;
+      margin-top: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    }
+
+    .search-section h3 {
+      margin-bottom: 16px;
+      font-size: 1.35rem;
+    }
+
+    .search-form {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-form input {
+      flex: 1 1 260px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 13px 14px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .search-form button {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px 20px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      background: #111827;
+      color: #ffffff;
+    }
+
+    .search-form button:disabled { opacity: .65; cursor: wait; }
+
+    .search-message {
+      margin-top: 16px;
+      color: #6b7280;
+    }
+
+    .search-message.error { color: #991b1b; }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .result-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .result-card img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .result-card h4 { font-size: 1.1rem; }
+
+    .result-card p {
+      color: #4b5563;
+      line-height: 1.5;
+      font-size: .95rem;
+    }
+
+    .result-card .meta {
+      color: #6b7280;
+      font-size: .9rem;
+    }
+
+    .result-card a { color: #1d4ed8; }
   </style>
 <style>
 [hidden] { display:none !important; }
@@ -141,7 +226,10 @@
   <script defer src="../../shared/frontend/supabase-client.js"></script>
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
+  <script defer src="../../shared/frontend/service-requests.js"></script>
+  <script defer src="../../shared/frontend/location.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
+  <script defer src="community-api.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
 </head>
 
@@ -163,17 +251,6 @@
       </p>
     </section>
 
-    <section class="search-card">
-      <h3>Search Available Items</h3>
-      <p>Search donated items currently available in the system. If you cannot find what you need, you can request it instead.</p>
-      <form id="donationSearchForm" class="search-form">
-        <input id="donationSearch" type="search" maxlength="100" placeholder="Search for food, clothing, water, school supplies…" aria-label="Search available items">
-        <button type="submit">Search</button>
-      </form>
-      <div id="donationSearchMessage" class="search-message" role="status"></div>
-      <div id="donationResults" class="donation-results"></div>
-    </section>
-
     <section class="dashboard-grid">
       <article class="card">
         <h3>Request Help</h3>
@@ -185,6 +262,15 @@
       </article>
 
       <article class="card">
+        <h3>My Requests</h3>
+        <p>
+          Follow your service requests from submission to completion and cancel
+          requests while they are still open.
+        </p>
+        <a href="community-user_requests.html">My Requests</a>
+      </article>
+
+      <article class="card">
         <h3>Donate</h3>
         <p>
           Upload an item you want to give away for free and specify when it is
@@ -193,9 +279,25 @@
         <a href="community-user_donate.html">Donate Item</a>
       </article>
     </section>
+
+    <section class="search-section" aria-labelledby="search-heading">
+      <h3 id="search-heading">Search Available Items</h3>
+      <form id="donationSearchForm" class="search-form">
+        <input
+          id="itemSearchInput"
+          name="itemSearch"
+          type="search"
+          placeholder="Search by name, description, or area…"
+          aria-label="Search available items"
+        />
+        <button type="submit" id="itemSearchButton">Search</button>
+      </form>
+      <p id="searchMessage" class="search-message" role="status" hidden></p>
+      <div id="searchResults" class="results-grid"></div>
+    </section>
   </main>
 
-  <script src="community-api.js"></script><script src="community-user_dashboard.js"></script>
+  <script src="community-user_dashboard.js"></script>
 </div>
 </body>
 </html>

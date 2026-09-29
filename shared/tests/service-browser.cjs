@@ -14,7 +14,10 @@ const pages = {
   mine: 'community-user/frontend/community-user_requests.html',
   available: 'verified-assistant/frontend/verified-assistant_available-requests.html',
   active: 'verified-assistant/frontend/verified-assistant_active-jobs.html',
-  completed: 'verified-assistant/frontend/verified-assistant_completed-jobs.html'
+  completed: 'verified-assistant/frontend/verified-assistant_completed-jobs.html',
+  dashboard: 'community-user/frontend/community-user_dashboard.html',
+  donate: 'community-user/frontend/community-user_donate.html',
+  browse: 'community-user/frontend/community-user_browse-requests.html'
 };
 const sdkMock = `(() => {
   let callback;
@@ -26,21 +29,27 @@ const sdkMock = `(() => {
       async signOut() { callback('SIGNED_OUT',null); return {}; }
     },
     from(table) {
-      const query = {table, filters:[]};
+      const query = {table, filters:[], ors:[]};
       const builder = {
         select(columns) { query.columns=columns; return this; },
-        insert(row) { query.insert=row; return this; },
-        single() { return window.testBackend({kind:'query',...query,single:true}); },
+        insert(rows) { query.insert=Array.isArray(rows)?rows:[rows]; return this; },
         eq(key,value) { query.filters.push(['eq',key,value]); return this; },
         neq(key,value) { query.filters.push(['neq',key,value]); return this; },
         in(key,value) { query.filters.push(['in',key,value]); return this; },
+        or(expression) { query.ors.push(expression); return this; },
         order(key,options) { query.order={key,...options}; return this; },
         range(start,end) { query.range=[start,end]; return this; },
+        limit(count) { query.limit=count; return this; },
+        single() { query.single=true; return window.testBackend({kind:'query',...query}); },
         maybeSingle() { return window.testBackend({kind:'query',...query,single:true}); },
         then(resolve,reject) { return window.testBackend({kind:'query',...query}).then(resolve,reject); }
       }; return builder;
     },
-    rpc(name,args) { return window.testBackend({kind:'rpc',name,args}); }
+    rpc(name,args) { return window.testBackend({kind:'rpc',name,args}); },
+    storage: { from(bucket) { return {
+      upload(path,file,options) { return window.testBackend({kind:'storage',op:'upload',bucket,path,contentType:options?.contentType}); },
+      getPublicUrl(path) { return {data:{publicUrl:'https://cdn.test/'+bucket+'/'+path}}; }
+    }; } }
   })};
 })();`;
 
@@ -55,35 +64,66 @@ const server = http.createServer((req, res) => {
 });
 
 function backend() {
-  const db = { requests: [], assignments: [], reports: [], calls: [], failQuery: null, failRpc: null, delayRpc: 0 };
+  const db = { requests: [], assignments: [], reports: [], donations: [], donation_images: [], storageFiles: [],
+    calls: [], failQuery: null, failRpc: null, delayRpc: 0 };
   const error = code => ({error:{code,message:'Private database detail must never be shown'}});
   const verified = account => account.assistant?.verification_status === 'verified' && account.assistant?.training_status === 'completed';
   db.request = (changes = {}) => {
     const row = { id:randomUUID(), user_id:'member', request_type:'service', category:'grocery_collection',
       description:'Please collect groceries', location:'Community hall', preferred_date:'2099-12-31',
-      preferred_time:'10:30:00', urgency:'medium', additional_info:null, status:'open',
-      created_at:new Date().toISOString(), updated_at:new Date().toISOString(), ...changes };
+      preferred_time:'10:30:00', urgency:'medium', additional_info:null, latitude:null, longitude:null,
+      status:'open', created_at:new Date().toISOString(), updated_at:new Date().toISOString(), ...changes };
     db.requests.push(row); return row;
   };
+  // Minimal evaluator for the .or() expressions the frontend sends (is.null, lte/gte, ilike substring).
+  const orMatch = (row, expression) => expression.split(',').some(part => {
+    if (part.endsWith('.is.null')) return row[part.slice(0,-'.is.null'.length)] == null;
+    let match = part.match(/^(.*)\.(lte|gte|lt|gt|eq)\.(.*)$/);
+    if (match) {
+      const value = row[match[1]];
+      if (value == null) return false;
+      const left = String(value), right = match[3];
+      return match[2] === 'lte' ? left <= right : match[2] === 'gte' ? left >= right
+        : match[2] === 'lt' ? left < right : match[2] === 'gt' ? left > right : left === right;
+    }
+    match = part.match(/^(.*)\.ilike\.%(.*)%$/);
+    if (match) return String(row[match[1]] ?? '').toLowerCase().includes(match[2].toLowerCase());
+    return false;
+  });
   db.handle = async (account, call) => {
     db.calls.push({account:account.id,...structuredClone(call)});
+    if (call.kind === 'storage') {
+      if (call.op === 'upload') { db.storageFiles.push({bucket:call.bucket,path:call.path,contentType:call.contentType}); return {data:{path:call.path}}; }
+      return error('P0001');
+    }
     if (call.kind === 'query') {
-      if(call.insert) {
-        assert.equal(call.insert.user_id,account.id);
-        if(call.table==='requests') return {data:structuredClone(db.request(call.insert))};
-        const row={id:randomUUID(),...call.insert}; db.reports.push(row); return {data:row};
+      if (call.insert) {
+        if (call.table === 'requests') for (const row of call.insert) assert.equal(row.user_id,account.id);
+        const defaults = call.table === 'donations' ? {status:'available'} : {};
+        const rows = call.insert.map(row => ({...defaults, id:randomUUID(), ...row}));
+        db[call.table].push(...rows);
+        return {data:structuredClone(call.single ? rows[0] : rows)};
       }
       if (call.table === 'profiles') return {data:{id:account.id, role:account.role || 'community_user', first_name:'Test', last_name:account.id}};
       if (call.table === 'assistants') return {data:account.assistant || null};
       if (call.table === 'developer_accounts') return {data:account.developer ? {user_id:account.id} : null};
       if (db.failQuery) { const code=db.failQuery; db.failQuery=null; return error(code); }
       // Model account visibility independently of the query's filters.
-      let rows = call.table === 'requests'
-        ? db.requests.filter(row => row.user_id === account.id || verified(account))
-        : db.assignments.filter(row => row.assistant_id === account.assistant?.id).map(row => ({...row,requests:db.requests.find(request => request.id === row.request_id)}));
+      let rows;
+      if (call.table === 'requests') {
+        rows = db.requests.filter(row => row.user_id === account.id || verified(account)
+          || (row.request_type === 'resource' && row.status === 'open'));
+      } else if (call.table === 'assignments') {
+        rows = db.assignments.filter(row => row.assistant_id === account.assistant?.id)
+          .map(row => ({...row,requests:db.requests.find(request => request.id === row.request_id)}));
+      } else {
+        rows = (db[call.table] || []).slice();
+      }
       for (const [op,key,value] of call.filters) rows=rows.filter(row => op === 'eq' ? row[key] === value : op === 'neq' ? row[key] !== value : value.includes(row[key]));
+      for (const expression of call.ors) rows=rows.filter(row => orMatch(row,expression));
       if (call.order) rows=[...rows].sort((a,b) => String(a[call.order.key]).localeCompare(String(b[call.order.key])) * (call.order.ascending ? 1 : -1));
       if (call.range) rows=rows.slice(call.range[0],call.range[1]+1);
+      if (call.limit != null) rows=rows.slice(0,call.limit);
       return {data:structuredClone(rows)};
     }
     if (db.delayRpc) await new Promise(resolve => setTimeout(resolve,db.delayRpc));
@@ -96,7 +136,8 @@ function backend() {
       if (row && row.user_id !== account.id) return error('42501');
       if (!row) row=db.request({id:call.args.p_request_id,user_id:account.id,category:call.args.p_category,
         description:call.args.p_description,location:call.args.p_location,preferred_date:call.args.p_preferred_date,
-        preferred_time:call.args.p_preferred_time,urgency:call.args.p_urgency,additional_info:call.args.p_additional_info,problems_addressed:call.args.p_problems_addressed});
+        preferred_time:call.args.p_preferred_time,urgency:call.args.p_urgency,additional_info:call.args.p_additional_info,
+        problems_addressed:call.args.p_problems_addressed,latitude:call.args.p_latitude ?? null,longitude:call.args.p_longitude ?? null});
     } else {
       if (!row) return error('P0001');
       const assignment=db.assignments.find(item => item.request_id === row.id);
@@ -131,7 +172,9 @@ function backend() {
   async function scenario(name, run) {
     const db=backend(), contexts=[], errors=[];
     async function account(settings) {
-      const context=await browser.newContext({viewport:{width:390,height:844}}); contexts.push(context);
+      const context=await browser.newContext({viewport:{width:390,height:844},
+        permissions:settings.geolocation ? ['geolocation'] : []}); contexts.push(context);
+      if (settings.geolocation) await context.setGeolocation(settings.geolocation);
       await context.addInitScript(settings => {
         window.testAccount=settings;
         if (settings.developerView) sessionStorage.setItem('community-services.developer-view',JSON.stringify({userId:settings.id,view:settings.developerView}));
@@ -151,10 +194,11 @@ function backend() {
     try { await run({db,account}); assert.deepEqual(errors,[]); count++; console.log('PASS '+name); }
     finally { await Promise.all(contexts.map(context => context.close())); }
   }
+  const listPages = new Set(['mine','available','active','completed','browse']);
   async function open(page,key) {
     await page.goto(base+pages[key]);
     await page.locator('#protected-content').waitFor({state:'visible'});
-    if (key !== 'help') await page.getByRole('button',{name:'Refresh',exact:true}).waitFor({state:'visible'});
+    if (listPages.has(key)) await page.getByRole('button',{name:'Refresh',exact:true}).waitFor({state:'visible'});
   }
   const message = (page,text) => page.locator('#service-message').filter({hasText:text}).waitFor();
   const cards = page => page.locator('article.item-card');
@@ -319,6 +363,82 @@ function backend() {
       assert.equal(await cards(member).count(),1); assert.equal(await member.getByRole('button',{name:'Next',exact:true}).isDisabled(),true);
       await action(member,'Previous'); await member.getByText('Request number 50',{exact:true}).waitFor();
       assert.equal(await member.getByRole('button',{name:'Previous',exact:true}).isDisabled(),true);
+    });
+    await scenario('live location button fills coordinates into the service request',async ({db,account}) => {
+      const member=await account({id:'member',geolocation:{latitude:-25.7479,longitude:28.2293}});
+      await open(member,'help');
+      await member.getByRole('button',{name:'Use my current location'}).click();
+      await member.locator('#serviceLocateStatus').filter({hasText:'Location captured'}).waitFor();
+      assert.equal(await member.locator('#serviceLatitude').inputValue(),'-25.7479');
+      assert.equal(await member.locator('#serviceLongitude').inputValue(),'28.2293');
+      await member.locator('input[name=serviceCategory][value=grocery_collection]').check();
+      await member.locator('#serviceDescription').fill('Please help me collect groceries');
+      await member.locator('#servicePreferredDate').fill('2099-12-31');
+      await member.locator('#servicePreferredTime').fill('10:30');
+      await member.locator('#serviceUrgency').selectOption('medium');
+      await action(member,'Submit Service Request');
+      await member.getByText('Service request submitted successfully.',{exact:false}).waitFor();
+      assert.equal(db.requests.length,1);
+      assert.equal(db.requests[0].latitude,-25.7479);
+      assert.equal(db.requests[0].longitude,28.2293);
+    });
+    await scenario('browse requests lists open item needs with directions and donate links',async ({db,account}) => {
+      db.request({user_id:'another-member',request_type:'resource',category:'food',description:'Rice and maize meal',
+        quantity:5,location:'Hatfield',urgency:'high',latitude:-25.7479,longitude:28.2293});
+      const member=await account({id:'member'}); await open(member,'browse');
+      const card=cards(member).filter({hasText:'Rice and maize meal'});
+      await card.waitFor();
+      const directions=card.getByRole('link',{name:'Get Directions'});
+      assert.match(await directions.getAttribute('href'),/google\.com\/maps\/dir/);
+      assert.match(await directions.getAttribute('href'),/destination=-25\.7479/);
+      assert.equal(await card.getByRole('link',{name:'Donate This Item'}).getAttribute('href'),'community-user_donate.html');
+      await member.locator('#categoryFilter').selectOption('water');
+      await member.getByText('No matching requests',{exact:true}).waitFor();
+      await member.locator('#categoryFilter').selectOption('');
+      await member.locator('#locationFilter').fill('hatfield');
+      await card.waitFor();
+      assert.match(await member.locator('#browseMessage').textContent(),/1 open request/);
+    });
+    await scenario('donation with image saves row, storage path, and appears in dashboard search',async ({db,account}) => {
+      const member=await account({id:'member'}); await open(member,'donate');
+      await member.locator('#itemName').fill('Winter blankets');
+      await member.locator('#category').selectOption('clothing');
+      await member.locator('#description').fill('Clean, gently used blankets');
+      await member.locator('#quantity').fill('4');
+      await member.locator('#location').fill('Community hall');
+      await member.locator('#availableFrom').fill('2026-09-28T09:00');
+      await member.locator('#availableUntil').fill('2026-10-05T17:00');
+      await member.locator('#images').setInputFiles({name:'blankets.png',mimeType:'image/png',buffer:Buffer.from('89504e470d0a1a0a','hex')});
+      await action(member,'Upload Donation');
+      await member.locator('#message').filter({hasText:'Your donation has been listed'}).waitFor();
+      assert.equal(db.donations.length,1);
+      assert.equal(db.donations[0].item_name,'Winter blankets');
+      assert.equal(db.donations[0].status,'available');
+      assert.equal(db.storageFiles.length,1);
+      assert.equal(db.storageFiles[0].bucket,'donation-images');
+      assert.match(db.storageFiles[0].path,new RegExp('^member/'+db.donations[0].id+'/.+-blankets\\.png$'));
+      assert.equal(db.donation_images.length,1);
+      assert.equal(db.donation_images[0].donation_id,db.donations[0].id);
+      assert.equal(db.donation_images[0].storage_path,db.storageFiles[0].path);
+      await open(member,'dashboard');
+      const result=member.locator('#searchResults .result-card').filter({hasText:'Winter blankets'});
+      await result.waitFor();
+      assert.match(await result.getByRole('link',{name:'Get Directions'}).getAttribute('href'),/google\.com\/maps\/dir/);
+      await member.locator('#itemSearchInput').fill('blankets');
+      await action(member,'Search');
+      await result.waitFor();
+      await member.locator('#itemSearchInput').fill('nonexistent item');
+      await action(member,'Search');
+      await member.locator('#searchMessage').filter({hasText:'No available items match your search.'}).waitFor();
+    });
+    await scenario('assistant job views link directions to the requester coordinates',async ({db,account}) => {
+      db.request({location:'Hatfield Community Hall',latitude:-25.7479,longitude:28.2293});
+      const worker=await account(assistant('worker')); await open(worker,'available');
+      const card=cards(worker).filter({hasText:'Hatfield Community Hall'});
+      await card.waitFor();
+      const href=await card.getByRole('link',{name:'Get Directions'}).getAttribute('href');
+      assert.match(href,/google\.com\/maps\/dir/);
+      assert.match(href,/destination=-25\.7479/);
     });
     console.log(`${count} service browser scenarios passed. Supabase SDK/backend are mocked; SQL concurrency/RLS and live deployment require separate verification.`);
   } finally { await browser.close(); server.close(); }

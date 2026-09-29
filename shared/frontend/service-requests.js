@@ -4,17 +4,38 @@
   const categories = Object.freeze({
     food_water_delivery: 'Food / Water Delivery',
     grocery_collection: 'Grocery Collection',
-    elderly_assistance: 'Elderly Assistance',
     elderly_vulnerable_assistance: 'Elderly / Vulnerable Assistance',
     public_transport_accompaniment: 'Public Transport Accompaniment',
     healthcare_access: 'Healthcare Access',
-    public_transport_assistance: 'Public Transport Assistance',
-    healthcare_facility_assistance: 'Healthcare Facility Assistance',
     donated_resource_delivery: 'Donated Resource Delivery',
+    child_supervision: 'Child Supervision',
+    pet_support: 'Pet Support',
+    administrative_guidance: 'Administrative Guidance',
     other_approved_service: 'Other Approved Service'
   });
-  const columns = 'id,user_id,request_type,category,description,location,preferred_date,preferred_time,urgency,additional_info,status,created_at,updated_at,item_name,quantity,problems_addressed';
+  const resourceCategories = Object.freeze({
+    food: 'Food',
+    water: 'Water',
+    clothing: 'Clothing',
+    school_supplies: 'School Supplies',
+    household_goods: 'Household Goods',
+    other_essentials: 'Other Essentials',
+    other: 'Other'
+  });
+  const reportCategories = Object.freeze({
+    community_issue: 'Community Issue',
+    platform_issue: 'Platform Issue',
+    safety_issue: 'Safety Issue',
+    service_issue: 'Service Issue',
+    other_issue: 'Other Issue'
+  });
+  const columns = 'id,user_id,request_type,category,description,item_name,quantity,problems_addressed,location,latitude,longitude,preferred_date,preferred_time,urgency,additional_info,status,created_at,updated_at';
   const pageSize = 50;
+  function categoryLabel(type, value) {
+    const source = type === 'resource' ? resourceCategories : type === 'report' ? reportCategories : categories;
+    if (value && Object.hasOwn(source, value)) return source[value];
+    return value ? String(value).replace(/_/g, ' ').replace(/\b\w/g, function (char) { return char.toUpperCase(); }) : 'General request';
+  }
   async function identity() {
     const state = await CommunityAuth.state();
     if (!state) throw new Error('Please sign in to continue.');
@@ -36,7 +57,9 @@
       p_urgency: input.urgency,
       p_additional_info: input.additionalInfo?.trim() || null,
       p_request_id: requestId,
-      p_problems_addressed: input.problemsAddressed || []
+      p_problems_addressed: input.problemsAddressed || null,
+      p_latitude: input.latitude ?? null,
+      p_longitude: input.longitude ?? null
     }));
   }
   async function list(mode, offset = 0) {
@@ -44,7 +67,7 @@
     const db = CommunityAuth.getClient();
     let query;
     if (mode === 'mine') {
-      query = db.from('requests').select(columns).eq('user_id', state.user.id);
+      query = db.from('requests').select(columns).eq('user_id', state.user.id).in('request_type', ['service', 'resource']);
     } else if (mode === 'available') {
       if (!AuthPolicy.verified(state)) return [];
       query = db.from('requests').select(columns).eq('request_type', 'service').eq('status', 'open').neq('user_id', state.user.id);
@@ -77,5 +100,6 @@
     if (error?.message === 'Please sign in to continue.') return error.message;
     return 'The request could not be completed. Check your connection and try again.';
   }
-  window.ServiceRequests = Object.freeze({ categories, pageSize, create, list, transition, message });
+  window.ServiceRequests = Object.freeze({ categories, resourceCategories, reportCategories,
+    categoryLabel, pageSize, create, list, transition, message });
 })();

@@ -45,15 +45,23 @@
       for (const row of filtered) {
         const card = element('article', undefined, 'item-card');
         const top = element('div', undefined, 'item-card-top');
-        top.append(element('h3', row.item_name || ServiceRequests.categories[row.category] || row.category));
+        top.append(element('h3', row.item_name || ServiceRequests.categoryLabel(row.request_type, row.category)));
         top.append(element('span', statuses[row.status] || 'Unknown', 'badge badge-' + (Object.hasOwn(statuses, row.status) ? row.status : 'neutral')));
         card.append(top, element('p', row.description, 'meta'), element('p', 'Location: ' + (row.location || 'Not provided'), 'meta'));
         if (row.preferred_date) card.append(element('p', 'Preferred: ' + row.preferred_date + ' ' + (row.preferred_time || '').slice(0, 5), 'meta'));
-        if (row.quantity) card.append(element('p', 'Quantity: ' + row.quantity, 'meta'));
+        if (row.request_type === 'resource' && row.quantity != null) card.append(element('p', 'Quantity: ' + row.quantity, 'meta'));
         if (row.problems_addressed?.length) card.append(element('p', 'Problems addressed: ' + row.problems_addressed.join(', ').replaceAll('_', ' '), 'meta'));
         if (row.urgency) card.append(element('p', 'Urgency: ' + row.urgency, 'meta'));
         if (row.additional_info) card.append(element('p', row.additional_info, 'meta'));
         if (row.completed_at) card.append(element('p', 'Completed: ' + new Date(row.completed_at).toLocaleString(), 'meta'));
+        if (mode !== 'mine') {
+          const directions = CommunityLocation.directionsUrl({ latitude: row.latitude, longitude: row.longitude, address: row.location });
+          if (directions) {
+            const link = element('a', 'Get Directions', 'btn btn-secondary btn-sm');
+            link.href = directions; link.target = '_blank'; link.rel = 'noopener';
+            card.append(link);
+          }
+        }
         const action = allowedAction(row);
         if (action) {
           const button = element('button', labels[action], 'btn btn-primary btn-sm');
@@ -96,7 +104,6 @@
         await ServiceRequests.transition(action, id);
         busy = false;
         await load();
-        // A failed refresh must keep its error instead of claiming a successful reload.
         if (!status.textContent) status.textContent = ({ accept: 'Request accepted. Open Active Jobs to start it.', cancel: 'Request cancelled.', cancelResource: 'Request cancelled.',
           start: 'Job started.', complete: 'Job completed. You can find it in Completed Jobs.' })[action];
       } catch (error) {

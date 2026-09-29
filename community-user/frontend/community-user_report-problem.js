@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const form=document.getElementById("community-user_report-problemForm");
   const message=document.getElementById("message");
   if(!form) return;
+  CommunityLocation.attachLocator(document.getElementById("problemLocateButton"),{locationInput:document.getElementById("problemLocation"),latInput:document.getElementById("problemLatitude"),lngInput:document.getElementById("problemLongitude"),statusEl:document.getElementById("problemLocateStatus")});
   form.addEventListener("submit", async (event)=>{
     event.preventDefault(); hideBanner(message);
     const type=document.getElementById("problemType"), desc=document.getElementById("problemDescription"), loc=document.getElementById("problemLocation"), urgency=document.getElementById("problemUrgency");
@@ -13,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if(!valid) return;
     const submit=form.querySelector('button[type="submit"]'); submit.disabled=true; submit.textContent="Submitting…";
     try{
-      const report=await CommunityAPI.createReport({category:type.value,description:desc.value.trim(),location:loc.value.trim(),urgency:urgency.value,additionalInfo:document.getElementById("problemAdditional").value.trim()});
+      const report=await CommunityAPI.createReport({category:type.value,description:desc.value.trim(),location:loc.value.trim(),latitude:parseFloat(document.getElementById("problemLatitude").value)||null,longitude:parseFloat(document.getElementById("problemLongitude").value)||null,urgency:urgency.value,additionalInfo:document.getElementById("problemAdditional").value.trim()});
       showBanner(message,`Problem report submitted successfully. Reference: ${report.id}`,'success');
       form.reset();
     }catch(error){ console.error(error); showBanner(message,error.message||"Could not submit the problem report.",'error'); }

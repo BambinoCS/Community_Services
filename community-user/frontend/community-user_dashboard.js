@@ -1,68 +1,125 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("donationSearchForm");
-  const input = document.getElementById("donationSearch");
-  const results = document.getElementById("donationResults");
-  const message = document.getElementById("donationSearchMessage");
+(function () {
+  'use strict';
 
-  if (!form || !input || !results) return;
+  const searchForm = document.getElementById('donationSearchForm');
+  const searchInput = document.getElementById('itemSearchInput');
+  const searchButton = document.getElementById('itemSearchButton');
+  const resultsGrid = document.getElementById('searchResults');
+  const searchMessage = document.getElementById('searchMessage');
+  let busy = false;
+  let loaded = false;
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>\"]/g, (character) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;"
-    }[character]));
+  function setMessage(text, isError) {
+    searchMessage.textContent = text;
+    searchMessage.hidden = !text;
+    searchMessage.classList.toggle('error', !!isError && !!text);
   }
 
-  function renderResults(rows, query) {
-    if (!rows.length) {
-      if (!query) {
-        results.innerHTML = "<p>No donated items are currently available.</p>";
-        return;
-      }
+  function setBusy(value) {
+    busy = value;
+    searchButton.disabled = value;
+    searchButton.textContent = value ? 'Searching…' : 'Search';
+  }
 
-      const link = "community-user_request-new-item.html?item=" + encodeURIComponent(query);
-      results.innerHTML =
-        '<article class="donation-result">' +
-        "<h4>No available item found</h4>" +
-        "<p>We could not find “" + escapeHtml(query) + "” in currently available donations.</p>" +
-        '<a href="' + link + '">Request this item instead →</a>' +
-        "</article>";
-      return;
+  function textElement(tag, text, className) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    element.textContent = text;
+    return element;
+  }
+
+  function formatWindow(from, until) {
+    const options = { dateStyle: 'medium', timeStyle: 'short' };
+    const fromText = from ? new Date(from).toLocaleString(undefined, options) : 'now';
+    const untilText = until ? new Date(until).toLocaleString(undefined, options) : 'ongoing';
+    return `Available ${fromText} – ${untilText}`;
+  }
+
+  function imageUrl(path) {
+    return CommunityAuth.getClient().storage.from('donation-images').getPublicUrl(path).data.publicUrl;
+  }
+
+  function requestItemLink(itemName) {
+    const link = document.createElement('a');
+    link.href = 'community-user_request-new-item.html?item=' + encodeURIComponent(itemName || '');
+    link.textContent = 'Need this item? Request it →';
+    return link;
+  }
+
+  function renderCard(donation, firstImagePath) {
+    const card = document.createElement('article');
+    card.className = 'result-card';
+    if (firstImagePath) {
+      const image = document.createElement('img');
+      image.src = imageUrl(firstImagePath);
+      image.alt = donation.item_name;
+      card.appendChild(image);
     }
-
-    results.innerHTML = rows.map((row) => {
-      const itemLink = "community-user_request-new-item.html?item=" + encodeURIComponent(row.item_name || "");
-      return (
-        '<article class="donation-result">' +
-        "<h4>" + escapeHtml(row.item_name) + "</h4>" +
-        "<p>Category: " + escapeHtml(row.category) + "</p>" +
-        "<p>Quantity: " + escapeHtml(row.quantity) + "</p>" +
-        "<p>Location: " + escapeHtml(row.location || "Not specified") + "</p>" +
-        '<a href="' + itemLink + '">Need this item? Request it →</a>' +
-        "</article>"
-      );
-    }).join("");
+    card.appendChild(textElement('h4', donation.item_name));
+    card.appendChild(textElement('p',
+      `${ServiceRequests.resourceCategories[donation.category] || donation.category} · Qty ${donation.quantity}`));
+    card.appendChild(textElement('p', donation.description, 'meta'));
+    card.appendChild(textElement('p', `Collection: ${donation.location}`, 'meta'));
+    card.appendChild(textElement('p', formatWindow(donation.available_from, donation.available_until), 'meta'));
+    const directions = CommunityLocation.directionsUrl(donation);
+    if (directions) {
+      const link = document.createElement('a');
+      link.href = directions;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'Get Directions';
+      card.appendChild(link);
+    }
+    card.appendChild(requestItemLink(donation.item_name));
+    return card;
   }
 
-  async function search() {
-    const query = input.value.trim();
-    results.innerHTML = "<p>Searching…</p>";
-    if (message) message.textContent = "";
+  function renderNoMatch(term) {
+    const card = document.createElement('article');
+    card.className = 'result-card';
+    card.appendChild(textElement('h4', 'No available item found'));
+    card.appendChild(textElement('p', `We could not find “${term}” in currently available donations.`, 'meta'));
+    const link = document.createElement('a');
+    link.href = 'community-user_request-new-item.html?item=' + encodeURIComponent(term);
+    link.textContent = 'Request this item instead →';
+    card.appendChild(link);
+    resultsGrid.appendChild(card);
+  }
 
+  async function searchAvailableItems() {
+    if (busy) return;
+    setBusy(true);
+    setMessage('Searching available items…', false);
+    resultsGrid.replaceChildren();
     try {
-      const rows = await CommunityAPI.searchAvailableDonations(query);
-      renderResults(rows, query);
+      const term = searchInput.value.trim();
+      const rows = await CommunityAPI.searchAvailableDonations(term);
+      resultsGrid.replaceChildren(...rows.map((row) => renderCard(row, row.first_image_path)));
+      if (rows.length) {
+        setMessage(`${rows.length} item${rows.length === 1 ? '' : 's'} available. Contact the donor through the platform to arrange collection.`, false);
+      } else {
+        if (term) renderNoMatch(term);
+        setMessage(term ? 'No available items match your search.' : 'No available items right now.', false);
+      }
     } catch (error) {
-      console.error(error);
-      results.innerHTML = "";
-      if (message) message.textContent = error.message || "Could not search available items.";
+      setMessage(error.message === 'Please sign in to continue.'
+        ? error.message
+        : 'Search is unavailable right now. Check your connection and try again.', true);
+    } finally {
+      setBusy(false);
     }
   }
 
-  form.addEventListener("submit", (event) => {
+  searchForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    void search();
+    loaded = true;
+    void searchAvailableItems();
   });
-});
+
+  document.addEventListener('community:authenticated', () => {
+    if (!loaded) {
+      loaded = true;
+      void searchAvailableItems();
+    }
+  });
+})();

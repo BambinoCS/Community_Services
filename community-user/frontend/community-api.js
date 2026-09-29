@@ -45,7 +45,8 @@ API.createRequest = async function(payload, requestId){
     description:payload.description, location:payload.location||null,
     item_name:payload.itemName||null, quantity:payload.quantity||null, problems_addressed:payload.problemsAddressed||[],
     preferred_date:payload.preferredDate||null, preferred_time:payload.preferredTime||null,
-    urgency:payload.urgency||null, additional_info:payload.additionalInfo||null, status:'open'
+    urgency:payload.urgency||null, additional_info:payload.additionalInfo||null, status:'open',
+    latitude:payload.latitude??null, longitude:payload.longitude??null
   };
   const {data,error}=await client().from('requests').insert(row).select('*').single();
   if(error) throw fail(error,'Could not submit your request.');
@@ -56,7 +57,8 @@ API.createReport = async function(payload){
   const {data,error}=await client().from('reports').insert({
     user_id:u.id,category:payload.category,description:payload.description,
     location:payload.location||null,urgency:payload.urgency||null,
-    additional_info:payload.additionalInfo||null,status:'open'
+    additional_info:payload.additionalInfo||null,status:'open',
+    latitude:payload.latitude??null, longitude:payload.longitude??null
   }).select('*').single();
   if(error) throw fail(error,'Could not submit your report.');
   return data;
@@ -78,7 +80,8 @@ API.createDonation = async function(payload, files){
   const {data:donation,error}=await client().from('donations').insert({
     donor_id:u.id,item_name:payload.itemName,category:payload.category,description:payload.description,
     quantity:payload.quantity,location:payload.location,available_from:payload.availableFrom||null,
-    available_until:payload.availableUntil||null,status:'available'
+    available_until:payload.availableUntil||null,status:'available',
+    latitude:payload.latitude??null, longitude:payload.longitude??null
   }).select('*').single();
   if(error) throw fail(error,'Could not create the donation.');
 
@@ -103,19 +106,34 @@ API.createDonation = async function(payload, files){
 };
 
 API.searchAvailableDonations = async function(query){
+  await user();
   const q=(query||'').trim();
+  const now=new Date().toISOString();
   let request=client().from('donations')
-    .select('id,item_name,category,description,quantity,location,available_from,available_until,status')
+    .select('id,item_name,category,description,quantity,location,latitude,longitude,available_from,available_until,created_at')
     .eq('status','available')
+    .or(`available_from.is.null,available_from.lte.${now}`)
+    .or(`available_until.is.null,available_until.gte.${now}`)
     .order('created_at',{ascending:false})
-    .limit(20);
+    .limit(24);
   if(q){
-    const escaped=q.replace(/[%_]/g, c => `\${c}`);
-    request=request.or(`item_name.ilike.%${escaped}%,category.ilike.%${escaped}%,description.ilike.%${escaped}%`);
+    const safe=q.replace(/[%,()]/g,' ').trim();
+    if(safe) request=request.or(`item_name.ilike.%${safe}%,description.ilike.%${safe}%,location.ilike.%${safe}%`);
   }
   const {data,error}=await request;
   if(error) throw fail(error,'Could not search available items.');
-  return data||[];
+  const rows=data||[];
+  const images=new Map();
+  if(rows.length){
+    const {data:imageRows}=await client().from('donation_images')
+      .select('donation_id,storage_path,sort_order')
+      .in('donation_id',rows.map((row)=>row.id))
+      .order('sort_order',{ascending:true});
+    for(const image of imageRows||[]){
+      if(!images.has(image.donation_id)) images.set(image.donation_id,image.storage_path);
+    }
+  }
+  return rows.map((row)=>({...row,first_image_path:images.get(row.id)||null}));
 };
 
 API.ownDonations = async function(){

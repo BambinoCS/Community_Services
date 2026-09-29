@@ -40,7 +40,7 @@ before(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;
   `);
-  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_request_help_fields.sql', '005_service_request_workflow.sql']) {
+  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_request_help_fields.sql', '005_service_request_workflow.sql', '006_location_resource_problem.sql']) {
     await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations', name), 'utf8'));
   }
   for (const id of Object.values(ids)) await db.query('insert into auth.users(id) values ($1)', [id]);

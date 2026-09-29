@@ -3,17 +3,18 @@
 ## Integrated Request Help and service workflow
 
 The team's separate Report a Problem, Request a Service and Request New Items pages
-are preserved. Option 3 now connects the service page to My Requests and the
-hyphenated assistant pages: Available Requests -> Active Jobs -> Completed Jobs.
-A verified assistant who completed training can accept an open service request,
-start it and complete it. Owners can cancel only open, unassigned requests.
+are preserved. The service page connects to My Requests and the hyphenated assistant
+pages: Available Requests -> Active Jobs -> Completed Jobs. A verified assistant who
+completed training can accept an open service request, start it and complete it.
+Owners can cancel only open, unassigned requests.
 
 Apply migrations 001-003, then the team's existing
-`004_request_help_fields.sql`, then **`005_service_request_workflow.sql`** in
-`shared/supabase/migrations/` using the trusted Supabase SQL Editor or migration
-process. Migration 005 has not been applied to the live project by this work.
-Pushing Git does not apply database SQL. Do not apply the old option 3 backup's
-`004_service_request_workflow.sql`; migration 005 is its reconciled replacement.
+`004_request_help_fields.sql`, then `005_service_request_workflow.sql`, then
+`006_location_resource_problem.sql` in `shared/supabase/migrations/` using the
+trusted Supabase SQL Editor or migration process. Migration 006 has not been applied
+to the live project by this work. Pushing Git does not apply database SQL. Do not
+apply the old option 3 backup's `004_service_request_workflow.sql`; migration 005 is
+its reconciled replacement.
 
 The team service categories and problems-addressed checkboxes are persisted.
 Legacy option 3 category values remain supported. Service requests use server RPCs
@@ -21,12 +22,25 @@ with validated fields, authenticated identity, row locks and atomic request/assi
 updates. Unchanged retries reuse a UUID to avoid duplicate submissions. New request
 dates use South African Standard Time. Developer Mode cannot grant permissions.
 
-My Requests keeps service and item records together, including item name/quantity.
-Item creation retains a restricted own-row INSERT policy; direct lifecycle updates
-are revoked. Open item cancellation uses its own RPC. Report and donation APIs remain
-in place. Reports submitted to the reports table remain separate from My Requests.
-Lists show 50 records per page; filters apply to the displayed page. Use Refresh to
-see other users' changes. No realtime notifications or availability editing added.
+Live location: every location field (service, item, problem and donation forms)
+offers a "Use my current location" button that reads the browser geolocation,
+reverse geocodes it with OpenStreetMap Nominatim (no API key) and stores
+latitude/longitude with the record. Request cards on My Requests and the assistant
+job pages include a "Get Directions" link to Google Maps pointed at the requester's
+captured coordinates, falling back to the saved address. No external API keys are
+required; if geolocation or reverse geocoding is unavailable, typed addresses still
+work.
+
+My Requests keeps service, resource and problem records together, including item
+name/quantity. Item creation retains a restricted own-row INSERT policy; direct
+lifecycle updates are revoked. Open item cancellation uses its own RPC. Report and
+donation APIs remain in place; donations accept images, uploaded to the public
+`donation-images` bucket with rows in `donation_images`. The community dashboard
+search lists matching donations and offers "Request this item" links into the item
+request page. Reports submitted to the reports table remain separate from
+My Requests. Lists show 50 records per page; filters apply to the displayed page.
+Use Refresh to see other users' changes. No realtime notifications or availability
+editing added.
 
 Current handoff: **`teamdevupdates/TEAM_UPDATE_LATEST6.txt`**. Updates 4 and 5 are
 preserved historical snapshots; their file paths, migration numbers and Git status
@@ -198,32 +212,44 @@ Also test the deployed GitHub Pages redirects and mobile browsers.
 ## Integrated workflow verification
 
 Run `node shared/tests/request-help-static.cjs` for the team page wiring and
-`node shared/tests/service-browser.cjs` with Playwright/Edge for 15 browser
-scenarios. These cover the merged service lifecycle, duplicate retry protection,
-stale acceptance, permissions, errors, mobile layout, pagination, and retained item
-and report forms. The service browser backend is mocked; no live data is touched.
+`node shared/tests/service-browser.cjs` with the same Playwright/Edge setup. The
+19 scenarios cover the merged service lifecycle, duplicate retry protection, stale
+acceptance, permissions, errors, mobile layout, pagination, retained item and
+report forms, live location capture, Get Directions links, dashboard donation
+search and donation image upload. The service browser backend is mocked; no live
+data is touched.
 
 Run `node --test shared/tests/service-database.test.cjs` with
 `@electric-sql/pglite` installed outside the repository. Set
 `SERVICE_TEST_PGLITE` to its absolute package path or use `NODE_PATH`.
-The 23 tests execute migrations 001, 003, 004 and 005 in a disposable database,
-checking authorization, RLS, validation, transitions, rollback and resource-request
-compatibility. PGlite serializes connections and does not verify real concurrent
-PostgreSQL lock scheduling. Storage migration 002 is outside these workflow tests.
+The 23 tests execute migrations 001, 003, 004, 005 and 006 in a disposable
+database, checking authorization, RLS, validation, transitions, rollback,
+resource-request compatibility and the location/problem column checks. PGlite
+serializes connections and does not verify real concurrent PostgreSQL lock
+scheduling. Storage migration 002 is outside these workflow tests.
 
 After database setup, test the deployed site with separate real community and
 verified/trained assistant accounts. Check service creation through completion,
-item/report submission, owner cancellation, competing acceptance, acceptance versus
+live location capture and directions links, item/report submission with location,
+donation images, owner cancellation, competing acceptance, acceptance versus
 cancellation, eligibility revocation, and actual PostgREST nested assignment reads.
 
 ## Existing limitations and next work
 
-Live database and GitHub Pages verification remain separate from automated tests.
+Admin verification/training management and other unconnected business screens
+still need their own implementation; the service workflow requires existing
+verified/trained assistant records and does not grant these statuses. Live
+database and GitHub Pages verification remain separate from automated tests.
 The existing Browse Requests API calls `browse_open_resource_requests`, whose
-migration is not present in this checkout; this integration does not implement it.
-Admin verification/training management, realtime updates and remaining business
-workflows need their own review. Existing report and donation behavior is retained.
+migration is not present in this checkout; this integration does not implement
+it. Realtime updates and remaining business workflows need their own review.
+
+Live location uses the browser geolocation API and OpenStreetMap Nominatim
+reverse geocoding; both need user permission and internet access, and Nominatim
+has public usage limits. Where either is unavailable the forms still accept
+typed addresses and directions fall back to the address text.
 
 Team handoffs belong in **`teamdevupdates/`**. Update 6 supersedes the historical
-update 4/5 integration and Git-status instructions. The external option 3 backup
-and original newbranch remain available for comparison.
+update 4/5 integration and Git-status instructions; older documents mentioning
+`shared/docs` or a root `TEAM_UPDATE_LATEST.txt` are stale. The external option 3
+backup and original newbranch remain available for comparison.
