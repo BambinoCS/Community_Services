@@ -140,6 +140,24 @@
       background: #f3f4f6;
       color: #374151;
     }
+
+    .message.success { background: #ecfdf5; color: #065f46; }
+    .message.error { background: #fef2f2; color: #991b1b; }
+
+    .locator-button {
+      margin-top: 8px;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .locator-status {
+      margin: 8px 0 0;
+      font-size: .9rem;
+      color: #166534;
+      overflow-wrap: anywhere;
+    }
+
+    .locator-status.error { color: #991b1b; }
   </style>
 <style>
 [hidden] { display:none !important; }
@@ -209,8 +227,8 @@
             <option value="food">Food</option>
             <option value="water">Water</option>
             <option value="clothing">Clothing</option>
-            <option value="school-supplies">School Supplies</option>
-            <option value="household-goods">Household Goods</option>
+            <option value="school_supplies">School Supplies</option>
+            <option value="household_goods">Household Goods</option>
             <option value="other">Other</option>
           </select>
         </div>
@@ -246,6 +264,10 @@
             placeholder="Example: Hatfield, Pretoria"
             required
           />
+          <input type="hidden" id="donationLatitude" name="latitude" />
+          <input type="hidden" id="donationLongitude" name="longitude" />
+          <button type="button" class="locator-button" id="donationLocateButton">Use my current location</button>
+          <p id="donationLocateStatus" class="locator-status" role="status" hidden></p>
         </div>
 
         <div class="form-group">
@@ -299,6 +321,7 @@
     </section>
   </main>
 
+  <script src="../../shared/frontend/location.js"></script>
   <script src="community-user_donate.js"></script>
 </div>
 </body>

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const statuses = { open: 'Open', assigned: 'Assigned', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled' };
-  const empty = { mine: 'No service requests yet. Submit one from Request Help.', available: 'No available requests right now.',
+  const empty = { mine: 'No requests yet. Submit one from Request Help.', available: 'No available requests right now.',
     active: 'No active jobs. Accepted requests will appear here.', completed: 'No completed jobs yet.' };
   const labels = { accept: 'Accept request', cancel: 'Cancel request', start: 'Start job', complete: 'Complete job' };
   const confirmations = { accept: 'Accept this request? You will be responsible for this job.',
@@ -42,13 +42,22 @@
       for (const row of filtered) {
         const card = element('article', undefined, 'item-card');
         const top = element('div', undefined, 'item-card-top');
-        top.append(element('h3', ServiceRequests.categories[row.category] || row.category));
+        top.append(element('h3', ServiceRequests.categoryLabel(row.request_type, row.category)));
         top.append(element('span', statuses[row.status] || 'Unknown', 'badge badge-' + (Object.hasOwn(statuses, row.status) ? row.status : 'neutral')));
         card.append(top, element('p', row.description, 'meta'), element('p', 'Location: ' + (row.location || 'Not provided'), 'meta'));
+        if (row.request_type === 'resource' && row.quantity != null) card.append(element('p', 'Quantity: ' + row.quantity, 'meta'));
         if (row.preferred_date) card.append(element('p', 'Preferred: ' + row.preferred_date + ' ' + (row.preferred_time || '').slice(0, 5), 'meta'));
         if (row.urgency) card.append(element('p', 'Urgency: ' + row.urgency, 'meta'));
         if (row.additional_info) card.append(element('p', row.additional_info, 'meta'));
         if (row.completed_at) card.append(element('p', 'Completed: ' + new Date(row.completed_at).toLocaleString(), 'meta'));
+        if (mode !== 'mine') {
+          const directions = CommunityLocation.directionsUrl({ latitude: row.latitude, longitude: row.longitude, address: row.location });
+          if (directions) {
+            const link = element('a', 'Get Directions', 'btn btn-secondary btn-sm');
+            link.href = directions; link.target = '_blank'; link.rel = 'noopener';
+            card.append(link);
+          }
+        }
         const action = allowedAction(row);
         if (action) {
           const button = element('button', labels[action], 'btn btn-primary btn-sm');

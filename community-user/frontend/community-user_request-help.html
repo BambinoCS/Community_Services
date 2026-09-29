@@ -133,6 +133,9 @@
     .request-dialog .primary-button { background: #111827; color: #fff; border-color: #111827; }
     .form-message { padding: 12px; border-radius: 8px; background: #fef2f2; color: #991b1b; }
     .request-dialog .saving-message { margin: 16px 0 0; }
+    .locator-button { margin-top: 8px; }
+    .locator-status { margin: 8px 0 0; font-size: .9rem; color: #166534; overflow-wrap: anywhere; }
+    .locator-status.error { color: #991b1b; }
     @media (max-width: 480px) { .request-dialog { padding: 20px; } .field-row { grid-template-columns: 1fr; gap: 0; } header { padding: 18px; } }
   </style>
 <style>
@@ -163,6 +166,7 @@
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
   <script defer src="../../shared/frontend/service-requests.js"></script>
+  <script defer src="../../shared/frontend/location.js"></script>
   <script defer src="community-user_request-help.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
@@ -181,8 +185,8 @@
     <section class="page-heading">
       <h1>Request Help</h1>
       <p>
-        Request a community service and follow its progress in My Requests.
-        Problem reports and requests for items are coming later.
+        Request a community service, report a problem, or ask for essential
+        items — then follow progress in My Requests.
       </p>
     </section>
 
@@ -245,6 +249,10 @@
         <div class="field">
           <label for="serviceLocation">Location</label>
           <input id="serviceLocation" name="location" type="text" maxlength="200" required aria-describedby="service-location-hint" />
+          <input type="hidden" id="serviceLatitude" name="latitude" />
+          <input type="hidden" id="serviceLongitude" name="longitude" />
+          <button type="button" class="locator-button" id="serviceLocateButton">Use my current location</button>
+          <p id="serviceLocateStatus" class="locator-status" role="status" hidden></p>
           <small id="service-location-hint">Give an area or meeting point. Up to 200 characters.</small>
         </div>
         <div class="field-row">
@@ -280,6 +288,124 @@
       </fieldset>
       <p id="requestServiceMessage" class="form-message" role="alert" tabindex="-1" hidden></p>
       <p id="service-saving-message" class="saving-message" role="status" hidden>Submitting your request…</p>
+    </form>
+  </dialog>
+
+  <dialog id="reportProblemModal" class="request-dialog" aria-labelledby="problem-dialog-title" aria-describedby="problem-dialog-description">
+    <div class="dialog-heading">
+      <h2 id="problem-dialog-title">Report a problem</h2>
+      <button type="button" id="close-problem-dialog" aria-label="Close problem report">Close</button>
+    </div>
+    <p id="problem-dialog-description">Report a community issue so the support team can look into it. All fields are required except additional information.</p>
+    <form id="reportProblemForm">
+      <fieldset id="problem-fields" disabled>
+        <div class="field">
+          <label for="problemType">Problem type</label>
+          <select id="problemType" name="problemType" required>
+            <option value="">Choose a problem type</option>
+            <option value="pothole">Pothole / road damage</option>
+            <option value="streetlight">Streetlight fault</option>
+            <option value="water_leak">Water leak</option>
+            <option value="waste">Waste / illegal dumping</option>
+            <option value="vandalism">Vandalism / graffiti</option>
+            <option value="safety">Safety concern</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="problemDescription">What is the problem?</label>
+          <textarea id="problemDescription" name="description" rows="4" maxlength="1000" required></textarea>
+        </div>
+        <div class="field">
+          <label for="problemLocation">Location</label>
+          <input id="problemLocation" name="location" type="text" maxlength="200" required aria-describedby="problem-location-hint" />
+          <input type="hidden" id="problemLatitude" name="latitude" />
+          <input type="hidden" id="problemLongitude" name="longitude" />
+          <button type="button" class="locator-button" id="problemLocateButton">Use my current location</button>
+          <p id="problemLocateStatus" class="locator-status" role="status" hidden></p>
+          <small id="problem-location-hint">Where is the problem? Up to 200 characters.</small>
+        </div>
+        <div class="field">
+          <label for="problemUrgency">Urgency</label>
+          <select id="problemUrgency" name="urgency" required>
+            <option value="">Choose urgency</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="problemAdditional">Additional information (optional)</label>
+          <textarea id="problemAdditional" name="additionalInfo" rows="3" maxlength="1000"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" id="cancel-problem-report">Cancel</button>
+          <button type="submit" id="submit-problem-report" class="primary-button">Submit report</button>
+        </div>
+      </fieldset>
+      <p id="reportProblemMessage" class="form-message" role="alert" tabindex="-1" hidden></p>
+      <p id="problem-saving-message" class="saving-message" role="status" hidden>Submitting your report…</p>
+    </form>
+  </dialog>
+
+  <dialog id="requestItemsModal" class="request-dialog" aria-labelledby="items-dialog-title" aria-describedby="items-dialog-description">
+    <div class="dialog-heading">
+      <h2 id="items-dialog-title">Request new items</h2>
+      <button type="button" id="close-items-dialog" aria-label="Close item request">Close</button>
+    </div>
+    <p id="items-dialog-description">Ask the community for essential items such as food, water, clothing, or school supplies. Verified assistants and donors can see open item requests.</p>
+    <form id="requestItemsForm">
+      <fieldset id="items-fields" disabled>
+        <div class="field">
+          <label for="itemCategory">Item category</label>
+          <select id="itemCategory" name="category" required>
+            <option value="">Choose a category</option>
+            <option value="food">Food</option>
+            <option value="water">Water</option>
+            <option value="clothing">Clothing</option>
+            <option value="school_supplies">School supplies</option>
+            <option value="household_goods">Household goods</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="itemDescription">What do you need?</label>
+          <textarea id="itemDescription" name="description" rows="4" maxlength="1000" required></textarea>
+        </div>
+        <div class="field">
+          <label for="itemQuantity">Quantity</label>
+          <input id="itemQuantity" name="quantity" type="number" min="1" step="1" required aria-describedby="item-quantity-hint" />
+          <small id="item-quantity-hint">How many do you need?</small>
+        </div>
+        <div class="field">
+          <label for="itemLocation">Location</label>
+          <input id="itemLocation" name="location" type="text" maxlength="200" required aria-describedby="item-location-hint" />
+          <input type="hidden" id="itemLatitude" name="latitude" />
+          <input type="hidden" id="itemLongitude" name="longitude" />
+          <button type="button" class="locator-button" id="itemLocateButton">Use my current location</button>
+          <p id="itemLocateStatus" class="locator-status" role="status" hidden></p>
+          <small id="item-location-hint">Where should the items be brought? Up to 200 characters.</small>
+        </div>
+        <div class="field">
+          <label for="itemUrgency">Urgency</label>
+          <select id="itemUrgency" name="urgency" required>
+            <option value="">Choose urgency</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="itemAdditional">Additional information (optional)</label>
+          <textarea id="itemAdditional" name="additionalInfo" rows="3" maxlength="1000"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" id="cancel-items-request">Cancel</button>
+          <button type="submit" id="submit-items-request" class="primary-button">Submit request</button>
+        </div>
+      </fieldset>
+      <p id="requestItemsMessage" class="form-message" role="alert" tabindex="-1" hidden></p>
+      <p id="items-saving-message" class="saving-message" role="status" hidden>Submitting your request…</p>
     </form>
   </dialog>
 

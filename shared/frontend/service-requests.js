@@ -10,8 +10,30 @@
     donated_resource_delivery: 'Donated Resource Delivery',
     other_approved_service: 'Other Approved Service'
   });
-  const columns = 'id,user_id,request_type,category,description,location,preferred_date,preferred_time,urgency,additional_info,status,created_at,updated_at';
+  const resourceCategories = Object.freeze({
+    food: 'Food',
+    water: 'Water',
+    clothing: 'Clothing',
+    school_supplies: 'School Supplies',
+    household_goods: 'Household Goods',
+    other: 'Other'
+  });
+  const reportCategories = Object.freeze({
+    pothole: 'Pothole / Road Damage',
+    streetlight: 'Streetlight Fault',
+    water_leak: 'Water Leak',
+    waste: 'Waste / Illegal Dumping',
+    vandalism: 'Vandalism / Graffiti',
+    safety: 'Safety Concern',
+    other: 'Other'
+  });
+  const columns = 'id,user_id,request_type,category,description,quantity,location,latitude,longitude,preferred_date,preferred_time,urgency,additional_info,status,created_at,updated_at';
   const pageSize = 50;
+  function categoryLabel(type, value) {
+    if (type === 'resource') return resourceCategories[value] || value;
+    if (type === 'report') return reportCategories[value] || value;
+    return categories[value] || value;
+  }
   async function identity() {
     const state = await CommunityAuth.state();
     if (!state) throw new Error('Please sign in to continue.');
@@ -32,15 +54,44 @@
       p_preferred_time: input.preferredTime,
       p_urgency: input.urgency,
       p_additional_info: input.additionalInfo?.trim() || null,
-      p_request_id: requestId
+      p_request_id: requestId,
+      p_latitude: input.latitude ?? null,
+      p_longitude: input.longitude ?? null
     }));
+  }
+  async function createResource(input, requestId) {
+    await identity();
+    return result(CommunityAuth.getClient().rpc('create_resource_request', {
+      p_category: input.category,
+      p_description: input.description.trim(),
+      p_quantity: input.quantity,
+      p_location: input.location.trim(),
+      p_urgency: input.urgency,
+      p_additional_info: input.additionalInfo?.trim() || null,
+      p_request_id: requestId,
+      p_latitude: input.latitude ?? null,
+      p_longitude: input.longitude ?? null
+    }));
+  }
+  async function report(input) {
+    const state = await identity();
+    return result(CommunityAuth.getClient().from('reports').insert({
+      user_id: state.user.id,
+      category: input.problemType,
+      description: input.description.trim(),
+      location: input.location.trim(),
+      urgency: input.urgency,
+      additional_info: input.additionalInfo?.trim() || null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null
+    }).select().single());
   }
   async function list(mode, offset = 0) {
     const state = await identity();
     const db = CommunityAuth.getClient();
     let query;
     if (mode === 'mine') {
-      query = db.from('requests').select(columns).eq('user_id', state.user.id).eq('request_type', 'service');
+      query = db.from('requests').select(columns).eq('user_id', state.user.id).in('request_type', ['service', 'resource']);
     } else if (mode === 'available') {
       if (!AuthPolicy.verified(state)) return [];
       query = db.from('requests').select(columns).eq('request_type', 'service').eq('status', 'open').neq('user_id', state.user.id);
@@ -73,5 +124,6 @@
     if (error?.message === 'Please sign in to continue.') return error.message;
     return 'The request could not be completed. Check your connection and try again.';
   }
-  window.ServiceRequests = Object.freeze({ categories, pageSize, create, list, transition, message });
+  window.ServiceRequests = Object.freeze({ categories, resourceCategories, reportCategories,
+    categoryLabel, pageSize, create, createResource, report, list, transition, message });
 })();

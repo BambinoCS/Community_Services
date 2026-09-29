@@ -325,6 +325,7 @@
   <script defer src="../../shared/frontend/auth.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
   <script defer src="../../shared/frontend/service-requests.js"></script>
+  <script defer src="../../shared/frontend/location.js"></script>
   <script defer src="../../shared/frontend/service-request-page.js"></script>
   <script defer src="community-user_requests.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
@@ -350,7 +351,7 @@
   <main>
     <section class="page-heading">
       <h1>My Requests</h1>
-      <p>Track your service requests from submission to completion. You can cancel a request while it is open.</p>
+      <p>Track your service and item requests from submission to completion. You can cancel a request while it is open.</p>
     </section>
 
     <div class="filters-bar">
@@ -370,8 +371,7 @@
         <select id="typeFilter">
           <option value="">All types</option>
           <option value="service">Service</option>
-
-
+          <option value="resource">Items</option>
         </select>
       </div>
     </div>
