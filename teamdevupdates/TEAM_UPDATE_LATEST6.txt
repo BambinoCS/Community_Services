@@ -1,0 +1,109 @@
+COMMUNITY SERVICES - OPTION 3 MERGED WITH TEAM REQUEST HELP WORK
+Date: 2026-09-29
+Target branch: main
+Supersedes integration instructions in historical updates 4 and 5.
+
+IN SIMPLE ENGLISH
+The team's new ways to ask for help stay in place. The service request now continues
+through a real assistant workflow: submit -> accept -> start -> complete. Community
+members can follow progress in My Requests and cancel only while still open.
+
+WHAT WAS PRESERVED FROM THE TEAM
+- Separate Request Service, Request New Items and Report a Problem pages.
+- Dashboard/search, donation and reporting implementations.
+- Hyphenated verified-assistant filenames and current navigation conventions.
+- Migration 004_request_help_fields.sql and its structured fields.
+- All seven current service choices, including elderly/vulnerable assistance,
+  public-transport accompaniment and healthcare access.
+- Problems-addressed checkboxes and item name/quantity are now actually persisted.
+
+WHAT OPTION 3 ADDS
+- Shared Supabase service API and safe list rendering.
+- My Requests with service AND item records, Refresh, 50-record pagination and
+  page-local filters. Item names/quantities and service problems addressed appear.
+- Available Requests for verified assistants with completed training; no self-accept.
+- Active Jobs start/complete actions restricted to the assigned eligible assistant.
+- Completed Jobs history; requester sees updated status on Refresh/navigation.
+- Real assistant dashboard eligibility and read-only availability.
+- Validated service creation with SAST dates and stable UUID retries for unchanged
+  submissions. Inputs are retained after errors and disabled while saving.
+- Transactional database lifecycle functions, locks and non-recursive read policies.
+
+IMPORTANT INTEGRATION DECISIONS
+1. The current service form was adapted; the old backup modal was not restored.
+2. Assistant files keep the team's hyphenated names. Shared scripts load before
+   the auth guard so authenticated events initialize the lists reliably.
+3. The backup SQL is now 005_service_request_workflow.sql, after the team's 004.
+   Do NOT apply the old backup 004_service_request_workflow.sql to this version.
+4. Service creation/status changes use secure RPCs. Resource creation retains
+   column-restricted INSERT plus own-user/community/open/resource RLS checks.
+   This avoids breaking Request New Items when service writes are restricted.
+5. Open item cancellation uses cancel_resource_request. Direct request/assignment
+   status updates are denied, including attempts to forge completed service work.
+6. Legacy service category values remain supported alongside current team values.
+7. Updates 4 and 5 were restored as historical records. Their old Git status and
+   deployment instructions are not current; use this update and README.md.
+
+FILES ADDED
+shared/frontend/service-requests.js
+shared/frontend/service-request-page.js
+shared/supabase/migrations/005_service_request_workflow.sql
+shared/tests/service-browser.cjs
+shared/tests/service-database.test.cjs
+teamdevupdates/TEAM_UPDATE_LATEST4.txt (historical backup restored)
+teamdevupdates/TEAM_UPDATE_LATEST5.txt (historical local note restored)
+teamdevupdates/TEAM_UPDATE_LATEST6.txt (this update)
+
+FILES UPDATED
+community-user/frontend/community-api.js
+community-user/frontend/community-user_request-service.html and .js
+community-user/frontend/community-user_requests.html and .js
+shared/frontend/auth.js
+verified-assistant/frontend/verified-assistant_available-requests.html and .js
+verified-assistant/frontend/verified-assistant_active-jobs.html and .js
+verified-assistant/frontend/verified-assistant_completed-jobs.html and .js
+verified-assistant/frontend/verified-assistant_dashboard.html and .js
+README.md
+
+VERIFICATION
+PASS: auth.test.cjs - 10 tests.
+PASS: auth-browser.cjs - 29 scenarios (27 mocked SDK, 2 real SDK/mocked HTTP).
+PASS: service-browser.cjs - 15 scenarios, including end-to-end service lifecycle,
+  stable retry after a lost response, failures/stale acceptance, access restrictions,
+  text escaping, mobile layout, pagination, retained item/report form submission,
+  structured-field persistence and item cancellation routing.
+PASS: service-database.test.cjs - 23 tests with actual SQL in disposable PGlite,
+  covering authorization, RLS, validation, retries, status transitions, rollback,
+  team category/problems fields and restricted resource creation/cancellation.
+PASS: check-auth-static.cjs - 58 JS/CJS files, 30 HTML pages, zero missing references.
+PASS: request-help-static.cjs - team form/dashboard/API wiring retained.
+PASS: git diff --check.
+Mobile service-page screenshot inspected; no horizontal overflow at 390px.
+Total: 77 automated tests/scenarios, plus static checks.
+
+DEPLOYMENT / DATABASE ACTION STILL REQUIRED
+Apply migrations 001-003 if not already applied, then:
+- 004_request_help_fields.sql
+- 005_service_request_workflow.sql
+Use the trusted Supabase SQL Editor or the team's migration process.
+This task does not apply live SQL. Git push alone does not apply the migration.
+Confirm the new function signatures are available through PostgREST before testing.
+Test with separate real community and verified/trained assistant accounts.
+Check simultaneous acceptance, acceptance versus cancellation, revocation of
+eligibility, item/report creation, and direct-write denial on the deployed database.
+Browser workflow tests mock Supabase; PGlite serializes connections, so they do not
+establish live integration or real cross-connection lock scheduling.
+
+KNOWN LIMITS
+- Manual Refresh; no realtime notifications added.
+- Availability is read-only; no new verification/training administration.
+- Problem reports remain in reports, separate from My Requests in requests.
+- Existing Browse Requests calls browse_open_resource_requests, whose migration is
+  absent from this checkout; that pre-existing feature needs separate completion.
+- Existing report/donation permissions and behavior are not redesigned here.
+- The external backup and original newbranch remain available for comparison.
+
+DELIVERY
+Prepared as an integration commit for main, with a normal push requested by the
+project owner. Check the commit history/task result for the final push outcome.
+No force push is required; the team's remote changes form the integration base.

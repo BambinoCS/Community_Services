@@ -1,5 +1,37 @@
 # Community Services
 
+## Integrated Request Help and service workflow
+
+The team's separate Report a Problem, Request a Service and Request New Items pages
+are preserved. Option 3 now connects the service page to My Requests and the
+hyphenated assistant pages: Available Requests -> Active Jobs -> Completed Jobs.
+A verified assistant who completed training can accept an open service request,
+start it and complete it. Owners can cancel only open, unassigned requests.
+
+Apply migrations 001-003, then the team's existing
+`004_request_help_fields.sql`, then **`005_service_request_workflow.sql`** in
+`shared/supabase/migrations/` using the trusted Supabase SQL Editor or migration
+process. Migration 005 has not been applied to the live project by this work.
+Pushing Git does not apply database SQL. Do not apply the old option 3 backup's
+`004_service_request_workflow.sql`; migration 005 is its reconciled replacement.
+
+The team service categories and problems-addressed checkboxes are persisted.
+Legacy option 3 category values remain supported. Service requests use server RPCs
+with validated fields, authenticated identity, row locks and atomic request/assignment
+updates. Unchanged retries reuse a UUID to avoid duplicate submissions. New request
+dates use South African Standard Time. Developer Mode cannot grant permissions.
+
+My Requests keeps service and item records together, including item name/quantity.
+Item creation retains a restricted own-row INSERT policy; direct lifecycle updates
+are revoked. Open item cancellation uses its own RPC. Report and donation APIs remain
+in place. Reports submitted to the reports table remain separate from My Requests.
+Lists show 50 records per page; filters apply to the displayed page. Use Refresh to
+see other users' changes. No realtime notifications or availability editing added.
+
+Current handoff: **`teamdevupdates/TEAM_UPDATE_LATEST6.txt`**. Updates 4 and 5 are
+preserved historical snapshots; their file paths, migration numbers and Git status
+statements do not describe the merged implementation.
+
 ## Personal profile (follow-up)
 
 The Profile button beside Sign out opens `profile.html` for every authenticated
@@ -23,12 +55,12 @@ handoff has been renamed to `teamdevupdates/TEAM_UPDATE_LATEST2.txt` in this che
 The Phase 1 notes below describe the earlier scope before this profile follow-up.
 
 HTML pages with inline CSS, separate JavaScript, and Supabase Auth/PostgreSQL/RLS.
-Phase 1 implements authentication and Developer Mode only. Business features are
-still placeholders. No database migrations or backend endpoints were added.
+Phase 1 implemented authentication and Developer Mode. Subsequent profile and
+Request Help work is described above.
 
 ## Configuration and local development
 
-1. Use Node.js 22+ and the existing Supabase project with migrations 001–003 applied.
+1. Use Node.js 22+ and the existing Supabase project with migrations 001–005 applied for the integrated workflow.
 2. Copy `.env.example` to `.env` and set `SUPABASE_URL` and
    `SUPABASE_PUBLISHABLE_KEY` using the project's modern `sb_publishable_` key.
 3. Run `node shared/scripts/configure-public.cjs` from the repository root.
@@ -153,7 +185,7 @@ Browser regressions require the `playwright` package resolvable through Node and
 installed Microsoft Edge (`npm install --no-save --package-lock=false playwright`
 if unavailable). Run `node shared/tests/auth-browser.cjs`. Set `AUTH_TEST_BROWSER`
 to another installed Playwright Chromium channel if needed. The test starts and
-closes its own loopback server. There are 21 mocked-SDK scenarios and two scenarios
+closes its own loopback server. There are 27 mocked-SDK scenarios and two scenarios
 using the real pinned SDK with mocked HTTP responses. No real accounts are used.
 
 Live release checks still required: signup/profile trigger/default role; actual
@@ -163,23 +195,35 @@ SDK session expiry and cross-tab sign-out; developer membership grants and revoc
 direct RLS attempts with separate community, assistant, admin and developer accounts.
 Also test the deployed GitHub Pages redirects and mobile browsers.
 
+## Integrated workflow verification
+
+Run `node shared/tests/request-help-static.cjs` for the team page wiring and
+`node shared/tests/service-browser.cjs` with Playwright/Edge for 15 browser
+scenarios. These cover the merged service lifecycle, duplicate retry protection,
+stale acceptance, permissions, errors, mobile layout, pagination, and retained item
+and report forms. The service browser backend is mocked; no live data is touched.
+
+Run `node --test shared/tests/service-database.test.cjs` with
+`@electric-sql/pglite` installed outside the repository. Set
+`SERVICE_TEST_PGLITE` to its absolute package path or use `NODE_PATH`.
+The 23 tests execute migrations 001, 003, 004 and 005 in a disposable database,
+checking authorization, RLS, validation, transitions, rollback and resource-request
+compatibility. PGlite serializes connections and does not verify real concurrent
+PostgreSQL lock scheduling. Storage migration 002 is outside these workflow tests.
+
+After database setup, test the deployed site with separate real community and
+verified/trained assistant accounts. Check service creation through completion,
+item/report submission, owner cancellation, competing acceptance, acceptance versus
+cancellation, eligibility revocation, and actual PostgREST nested assignment reads.
+
 ## Existing limitations and next work
 
-The original frontend handoff describes filenames and completed pages that differ
-from this checkout. Existing business script references are still missing on several
-pages; the static checker reports this known baseline explicitly. Several browser
-scripts are stored under `backend`, the shared validation file has no `.js` suffix,
-and the assistant-availability page was empty (now a guarded placeholder). These
-business implementations were not moved, repaired, or connected in this phase.
-Existing assistant status displays can still show placeholder data, independent
-of the trusted authorization checks. No new business write operations were added.
+Live database and GitHub Pages verification remain separate from automated tests.
+The existing Browse Requests API calls `browse_open_resource_requests`, whose
+migration is not present in this checkout; this integration does not implement it.
+Admin verification/training management, realtime updates and remaining business
+workflows need their own review. Existing report and donation behavior is retained.
 
-Team handoffs live in **`teamdevupdates/`**. The current Phase 1 submission is
-**`teamdevupdates/TEAM_UPDATE_LATEST3.txt`**; historical updates 0/1 and the master context
-remain intact. Older documents mentioning `shared/docs` or a root
-`TEAM_UPDATE_LATEST.txt` are stale.
-
-After live auth/RLS verification, agree on the request/assignment API contract and
-build the first service-request vertical slice, including atomic job acceptance.
-Requests, assignments, donations, reports, notifications, verification/application
-workflows, uploads and dashboard statistics were not integrated in Phase 1.
+Team handoffs belong in **`teamdevupdates/`**. Update 6 supersedes the historical
+update 4/5 integration and Git-status instructions. The external option 3 backup
+and original newbranch remain available for comparison.

@@ -37,11 +37,13 @@ API.dashboard = async function(){
   for(const r of [profile,requests,donations,notifications]) if(r.error) throw fail(r.error,'Could not load dashboard data.');
   return {profile:profile.data,requests:requests.data||[],donations:donations.data||[],notifications:notifications.data||[]};
 };
-API.createRequest = async function(payload){
+API.createRequest = async function(payload, requestId){
+  if(payload.requestType === "service") return window.ServiceRequests.create(payload, requestId || crypto.randomUUID());
   const u=await user();
   const row={
     user_id:u.id, request_type:payload.requestType, category:payload.category,
     description:payload.description, location:payload.location||null,
+    item_name:payload.itemName||null, quantity:payload.quantity||null, problems_addressed:payload.problemsAddressed||[],
     preferred_date:payload.preferredDate||null, preferred_time:payload.preferredTime||null,
     urgency:payload.urgency||null, additional_info:payload.additionalInfo||null, status:'open'
   };
@@ -65,11 +67,10 @@ API.ownRequests = async function(){
   if(error) throw fail(error,'Could not load your requests.');
   return data||[];
 };
-API.cancelRequest = async function(id){
-  const u=await user();
-  const {data,error}=await client().from('requests').update({status:'cancelled'}).eq('id',id).eq('user_id',u.id).in('status',['open','assigned']).select('*').maybeSingle();
-  if(error) throw fail(error,'Could not cancel this request.');
-  if(!data) throw new Error('This request can no longer be cancelled.');
+API.cancelRequest = async function(id, type='service'){
+  await user();
+  const {data,error}=await client().rpc(type === 'resource' ? 'cancel_resource_request' : 'cancel_service_request',{p_request_id:id});
+  if(error) throw fail(error,'Only an open, unassigned request can be cancelled. Refresh and try again.');
   return data;
 };
 API.createDonation = async function(payload, files){

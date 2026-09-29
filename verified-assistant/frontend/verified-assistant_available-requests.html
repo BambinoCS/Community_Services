@@ -303,7 +303,11 @@
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
+  <script defer src="../../shared/frontend/service-requests.js"></script>
+  <script defer src="../../shared/frontend/service-request-page.js"></script>
+  <script defer src="verified-assistant_available-requests.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
+<style>.item-card { overflow-wrap:anywhere; } .actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center; } #service-message { margin:16px 0; }</style>
 </head>
 
 <body data-auth-area="assistant">
@@ -337,6 +341,9 @@
           <option value="">All categories</option>
           <option value="food_water_delivery">Food / Water Delivery</option>
           <option value="grocery_collection">Grocery Collection</option>
+          <option value="elderly_vulnerable_assistance">Elderly / Vulnerable Assistance</option>
+          <option value="public_transport_accompaniment">Public Transport Accompaniment</option>
+          <option value="healthcare_access">Healthcare Access</option>
           <option value="elderly_assistance">Elderly Assistance</option>
           <option value="public_transport_assistance">Public Transport Assistance</option>
           <option value="healthcare_facility_assistance">Healthcare Facility Assistance</option>
@@ -359,22 +366,9 @@
   </main>
 
   <!-- VIEW DETAILS MODAL -->
-  <div class="modal-overlay" id="detailsModal">
-    <div class="modal-box">
-      <button class="modal-close" type="button" data-close-modal="detailsModal" aria-label="Close">&times;</button>
-      <h2 id="detailsTitle">Request Details</h2>
-      <div id="detailsBody" style="margin-top:14px;"></div>
-      <div id="acceptMessage" class="message-banner"></div>
-      <div class="modal-actions">
-        <button id="acceptRequestBtn" class="btn btn-primary" type="button">Accept Request</button>
-        <button type="button" class="btn btn-secondary" data-close-modal="detailsModal">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
-  <script src="verified-assistant_available-requests.js"></script>
+
   </div>
 </body>
 </html>
