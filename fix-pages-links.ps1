@@ -49,7 +49,7 @@ function Copy-Safely {
 }
 
 # ---------------------------------------------------------------------------
-# 1. Fix filename mismatches
+# 1. Fix filename mismatches that may still exist in older checkouts
 # ---------------------------------------------------------------------------
 
 Rename-Safely "admin/frontend/admin_verify_assistants.html" `
@@ -88,10 +88,10 @@ $renameMap = @{
     "admin_verify_assistants.html"              = "admin_verify-assistants.html"
     "commubity_user_requests.html"               = "community-user_requests.html"
     "community_user_browse_requests.html"        = "community-user_browse-requests.html"
-    "verified_assistant_active_jobs.html"        = "verified-assistant_active-jobs.html"
+    "verified-assistant_active-jobs.html"        = "verified-assistant_active-jobs.html"
     "verified_assistant_availible_requests.html" = "verified-assistant_available-requests.html"
-    "verified_assistant_dashboard.html"          = "verified-assistant_dashboard.html"
-    "verified_assistant_profile.html"            = "verified-assistant_profile.html"
+    "verified-assistant_dashboard.html"          = "verified-assistant_dashboard.html"
+    "verified-assistant_profile.html"            = "verified-assistant_profile.html"
     "verified_assistants_complefed_jobs.html"    = "verified-assistant_completed-jobs.html"
     "verigied_assistant_training.html"           = "verified-assistant_training.html"
 }
@@ -118,7 +118,7 @@ Rename-Safely "shared/frontend/UI.js" "shared/frontend/ui.js"
 
 Rename-Safely "shared/frontend/validation" "shared/frontend/validation.js"
 
-Rename-Safely "verified-assistant/frontend/verified-assistant_active_jobs.js" `
+Rename-Safely "verified-assistant/frontend/verified_assistant_active_jobs.js" `
               "verified-assistant/frontend/verified-assistant_active-jobs.js"
 
 Rename-Safely "verified-assistant/frontend/verified_assistant_completed_jobs.js" `

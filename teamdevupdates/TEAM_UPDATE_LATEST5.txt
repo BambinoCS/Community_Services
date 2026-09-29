@@ -1,0 +1,381 @@
+COMMUNITY SERVICE DELIVERY PLATFORM
+TEAM UPDATE — COMPLETED WORK / CURRENT GIT STATE
+Reference: MASTER AI TEAM CONTEXT + COLLABORATION PROMPT — Version 1.0
+Date: 2026-09-28
+Branch: main
+Status: Changes staged and ready for commit/push
+
+======================================================================
+1. PURPOSE OF THIS UPDATE
+======================================================================
+
+This update documents the work completed in the current development session,
+using the project's MASTER AI TEAM CONTEXT + COLLABORATION PROMPT Version 1.0
+as the reference for architecture, naming, role separation, Supabase usage,
+security expectations, and team handoff discipline.
+
+The work is focused mainly on:
+- Community User Request Help workflows
+- New Request Help options
+- Report Problem workflow
+- Verified Assistant frontend filename/structure corrections
+- Shared authentication/static checks
+- Supabase schema support for the new request/report fields
+- Team handoff documentation
+
+======================================================================
+2. PROJECT CONVENTIONS FOLLOWED
+======================================================================
+
+The implementation was kept aligned with the Master Context:
+
+- Community-user / verified-assistant / admin / shared architecture preserved.
+- HTML remains responsible for page markup and inline CSS.
+- JavaScript remains in separate .js files.
+- Supabase remains the database/auth/storage platform.
+- No Python implementation was introduced.
+- Existing project organization was not broadly reorganized.
+- Existing naming/status/API conventions were preserved where possible.
+- No secrets were added to the frontend or documentation.
+- Changes were kept scoped to the requested workflows and supporting files.
+- Existing verified-assistant files were treated by Git as renames rather than
+  unexplained deletions.
+
+======================================================================
+3. COMMUNITY USER WORK COMPLETED
+======================================================================
+
+Modified:
+- community-user/frontend/community-api.js
+- community-user/frontend/community-user_browse-requests.html
+- community-user/frontend/community-user_dashboard.html
+- community-user/frontend/community-user_dashboard.js
+- community-user/frontend/community-user_donate.html
+- community-user/frontend/community-user_donate.js
+- community-user/frontend/community-user_request-help.html
+- community-user/frontend/community-user_request-help.js
+- community-user/frontend/community-user_requests.html
+- community-user/frontend/community-user_requests.js
+
+Created:
+- community-user/frontend/community-user_report-problem.html
+- community-user/frontend/community-user_report-problem.js
+- community-user/frontend/community-user_request-new-item.html
+- community-user/frontend/community-user_request-new-item.js
+- community-user/frontend/community-user_request-service.html
+- community-user/frontend/community-user_request-service.js
+
+The Request Help area now has separate frontend workflow pages for:
+- Report a Problem
+- Request a Service
+- Request New Items
+
+This aligns with the design intent in Master Context Section 27:
+Request Help -> Report a Problem / Request Service / Request New Items.
+
+The existing Request Help page and request/history-related pages were also
+updated to support the expanded workflow.
+
+======================================================================
+4. VERIFIED ASSISTANT FILE NAMING / RENAME WORK
+======================================================================
+
+The old underscore-based verified-assistant filenames were renamed to the
+hyphenated naming convention expected by the Master Context.
+
+Git currently recognizes these as renames:
+
+OLD -> NEW
+
+verified_assistant_active_jobs.html
+    -> verified-assistant_active-jobs.html
+
+verified_assistant_active_jobs.js
+    -> verified-assistant_active-jobs.js
+
+verified_assistant_available_requests.html
+    -> verified-assistant_available-requests.html
+
+verified_assistant_available_requests.js
+    -> verified-assistant_available-requests.js
+
+verified_assistant_completed_jobs.html
+    -> verified-assistant_completed-jobs.html
+
+verified_assistant_completed_jobs.js
+    -> verified-assistant_completed-jobs.js
+
+verified_assistant_dashboard.html
+    -> verified-assistant_dashboard.html
+
+verified_assistant_dashboard.js
+    -> verified-assistant_dashboard.js
+
+verified_assistant_profile.html
+    -> verified-assistant_profile.html
+
+verified_assistant_profile.js
+    -> verified-assistant_profile.js
+
+verified_assistant_training.html
+    -> verified-assistant_training.html
+
+verified_assistant_training.js
+    -> verified-assistant_training.js
+
+The HTML files contain some content changes in addition to the filename
+changes. The JavaScript files are recognized by Git as pure renames.
+
+The verified-assistant dashboard was also modified:
+- verified-assistant/frontend/dashboard.html
+
+IMPORTANT:
+The large deletion count seen earlier was investigated. Git's staged
+name-status now identifies the old verified-assistant files as RENAMED,
+not simply deleted.
+
+======================================================================
+5. OLD ROOT-LEVEL REQUEST HELP FILE
+======================================================================
+
+The following old root-level file is staged for deletion:
+
+- community-user_request-help.js
+
+A repository-wide reference check was performed.
+
+The actual Request Help HTML page references:
+- community-user/frontend/community-user_request-help.js
+
+The frontend JavaScript file exists at that expected path and is staged as
+modified.
+
+Other references to the old root-level name occur in documentation, comments,
+the link-fixing script, and static-check configuration/history. No active
+HTML page was found loading the root-level duplicate.
+
+======================================================================
+6. SUPABASE DATABASE MIGRATION
+======================================================================
+
+Created:
+
+- shared/supabase/migrations/004_request_help_fields.sql
+
+The migration adds structured optional fields for the Request Help/report
+workflows.
+
+public.requests:
+- item_name text
+- quantity integer
+- problems_addressed text[]
+
+Validation:
+- quantity is allowed to be NULL
+- when supplied, quantity must be >= 1
+
+public.reports:
+- urgency text
+- additional_info text
+
+Indexes:
+- requests_item_name_idx
+- reports_urgency_idx
+
+The migration uses IF NOT EXISTS for the added columns/indexes.
+
+IMPORTANT DEPLOYMENT NOTE:
+The migration is committed to Git as a project migration, but a normal
+git push does not automatically apply SQL to the Supabase database unless
+the team's Supabase migration/deployment process does so separately.
+
+======================================================================
+7. SHARED AUTH / STATIC TEST SUPPORT
+======================================================================
+
+Modified:
+- shared/frontend/auth-policy.js
+- shared/tests/check-auth-static.cjs
+
+Created:
+- shared/tests/request-help-static.cjs
+
+These changes provide static validation/support for the updated Request Help
+workflow and authentication-related page expectations.
+
+======================================================================
+8. ADMIN / OTHER SUPPORTING CHANGES
+======================================================================
+
+Modified:
+- admin/frontend/admin_verify_assistants.html
+- fix-pages-links.ps1
+- teamdevupdates/TEAM_UPDATE_LATEST2.txt
+
+Created:
+- teamdevupdates/TEAM_UPDATE_LATEST.txt
+
+The link-fixing PowerShell script was updated as part of the staged project
+changes. It was NOT necessary to run the script during this verification
+session because the relevant filename changes are already present in the
+working tree and staged.
+
+======================================================================
+9. GIT VERIFICATION PERFORMED
+======================================================================
+
+Initial investigation showed a large apparent deletion count. This was
+investigated rather than committed blindly.
+
+Final staged Git state:
+
+- 38 files changed
+- 471 insertions
+- 635 deletions
+
+Git recognizes the verified-assistant filename changes as renames.
+
+The following verification was run:
+
+git diff --cached --check
+
+Result:
+- No whitespace errors were reported.
+
+git status
+
+Result:
+- All intended changes are staged.
+- Branch: main
+- Tracking: origin/main
+- Before commit, the branch was up to date with origin/main.
+
+A repository-wide reference check was also run for:
+community-user_request-help.js
+
+The new Supabase migration was reviewed.
+
+======================================================================
+10. TESTING LIMITATION
+======================================================================
+
+Attempted:
+
+npm test
+
+Result:
+PowerShell reported that 'npm' is not recognized as a command.
+
+This means Node.js/npm is not currently available on the machine's PATH,
+so the project's npm test command could not be executed in this session.
+
+This is an environment/tooling limitation, not a reported test failure.
+
+Therefore:
+- Git staged validation: PASSED
+- Reference check: COMPLETED
+- Migration review: COMPLETED
+- npm automated test suite: NOT RUN because npm is unavailable
+
+======================================================================
+11. CURRENT GIT STATUS
+======================================================================
+
+The changes are currently STAGED.
+
+The next Git actions are:
+
+git commit -m "Update community request workflows and verified assistant pages"
+
+git push origin main
+
+Then verify:
+
+git status
+
+Expected final state:
+
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+
+Do NOT use force push.
+
+======================================================================
+12. IMPORTANT NOTES FOR THE NEXT TEAM MEMBER / AI
+======================================================================
+
+Before making further changes:
+
+1. Read MASTER_AI_TEAM_CONTEXT.txt.
+2. Read TEAM_UPDATE_LATEST.txt.
+3. Check current GitHub/repository state.
+4. Do not undo the verified-assistant filename renames without checking
+   current links and team decisions.
+5. Preserve the community-user / verified-assistant / admin / shared structure.
+6. Preserve Supabase and the existing authentication/security model.
+7. Keep CSS inside HTML files and JavaScript in separate .js files.
+8. Reuse existing request status values and data contracts.
+9. Do not expose secrets.
+10. If changing database fields, update the corresponding migration/API/
+    frontend contracts consistently.
+11. Continue documenting meaningful work in TEAM_UPDATE files.
+
+======================================================================
+13. CURRENT WORKFLOW DIRECTION
+======================================================================
+
+The current implementation is moving the Community User Request Help area
+toward the Master Context's intended structure:
+
+Community User Dashboard
+    |
+    +-- Request Help
+    |      |
+    |      +-- Report a Problem
+    |      +-- Request a Service
+    |      +-- Request New Items
+    |
+    +-- Donate
+
+The Verified Assistant side has also been brought closer to the documented
+hyphenated filename convention for:
+- Dashboard
+- Available Requests
+- Active Jobs
+- Completed Jobs
+- Profile
+- Training
+
+The database migration provides supporting fields for the expanded request
+and report workflows.
+
+======================================================================
+14. TEAM HANDOFF SUMMARY
+======================================================================
+
+COMPLETED:
+- Expanded Community User Request Help frontend workflows.
+- Added Report Problem workflow files.
+- Added Request Service workflow files.
+- Added Request New Items workflow files.
+- Updated related community-user request/dashboard/donation/API files.
+- Updated shared auth/static validation support.
+- Added Supabase migration 004_request_help_fields.sql.
+- Corrected verified-assistant filename convention through Git-recognized
+  renames.
+- Updated relevant admin/supporting files.
+- Created/updated team handoff documentation.
+- Verified staged diff with git diff --cached --check.
+- Verified repository references for the removed root-level Request Help JS.
+- Confirmed all intended changes are staged.
+
+NOT COMPLETED / PENDING:
+- npm automated tests could not be run because npm is unavailable.
+- Supabase migration still needs to be applied through the team's normal
+  database migration/deployment process if it has not already been applied.
+- Commit and push are pending.
+
+======================================================================
+END OF TEAM UPDATE
+======================================================================

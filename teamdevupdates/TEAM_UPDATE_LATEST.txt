@@ -1,0 +1,65 @@
+TEAM UPDATE
+------------------------------------------------------------
+Date: 2026-09-28
+Member / AI: ChatGPT
+Branch: working-tree
+Feature: Community User Request Help workflows and repository link/JS fixes
+
+FILES CREATED:
+- community-user/frontend/community-user_report-problem.html
+- community-user/frontend/community-user_report-problem.js
+- community-user/frontend/community-user_request-service.html
+- community-user/frontend/community-user_request-service.js
+- community-user/frontend/community-user_request-new-item.html
+- community-user/frontend/community-user_request-new-item.js
+- shared/supabase/migrations/004_request_help_fields.sql
+
+FILES MODIFIED:
+- community-user/frontend/community-user_request-help.html
+- community-user/frontend/community-user_request-help.js
+- community-user/frontend/community-user_dashboard.html
+- community-user/frontend/community-user_dashboard.js
+- community-user/frontend/community-user_requests.html
+- community-user/frontend/community-user_requests.js
+- community-user/frontend/community-user_donate.html
+- community-user/frontend/community-user_donate.js
+- community-user/frontend/community-api.js
+- broken navigation/script references across HTML files
+
+FEATURES COMPLETED:
+- Request Help cards navigate to dedicated pages.
+- Report a Problem form validates and submits through CommunityAPI.createReport.
+- Request Service form includes all seven approved service categories, Problems Addressed, location, date/time and urgency, then submits through CommunityAPI.createRequest.
+- Request New Items form supports item name, category, quantity, description, location and urgency.
+- Dashboard can search available donations and offers Request this item instead when no match is found.
+- My Requests loads from Supabase and supports cancelling open/assigned requests.
+- Donation form now uses CommunityAPI instead of claiming a future submission.
+- Known broken local HTML/script references were corrected.
+
+BACKEND / DATABASE CHANGES:
+- CommunityAPI now sends optional item_name, quantity and problems_addressed on requests.
+- CommunityAPI now sends urgency and additional_info on reports.
+- Migration 004 adds these optional columns and a positive quantity check.
+
+KNOWN ISSUES / DEPENDENCIES:
+- Migration 004 must be applied in Supabase after migrations 001-003 before the new structured fields can be inserted.
+- Live Supabase/RLS testing requires the project's configured environment and authenticated accounts.
+- Existing assistant/admin business workflows remain outside this scoped change.
+
+TESTING:
+- JavaScript syntax check performed after edits.
+- Relative HTML href/src audit performed after edits.
+- Existing static auth test was used to identify the initial broken links; those references were corrected.
+
+TODO NEXT:
+- Apply migration 004 in Supabase.
+- Test each Request Help form with a real community_user account.
+- Test assistant visibility of open service requests.
+- Run the full browser/auth test suite after deployment.
+
+IMPORTANT DATA SHAPES:
+- Service request remains {requestType:"service", category, description, location, preferredDate, preferredTime, urgency, additionalInfo}; optional problemsAddressed is an additive field.
+- Resource request remains {requestType:"resource", category, description, location, urgency, additionalInfo}; optional itemName and quantity are additive fields.
+- Report remains {category, description, location}; urgency and additionalInfo are additive fields.
+
+------------------------------------------------------------

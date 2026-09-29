@@ -10,9 +10,9 @@
       : 'Your real account needs verification and completed training before accepting requests.';
     document.getElementById('availabilityToggleContainer').textContent = assistant?.availability === 'available' ? 'Available' : 'Unavailable';
     for (const [id, text, href] of [
-      ['availableRequestsContainer', 'Browse available service requests', 'verified_assistant_available_requests.html'],
-      ['activeJobsContainer', 'Open your active jobs', 'verified_assistant_active_jobs.html'],
-      ['completedJobsContainer', 'View your completed jobs', 'verified_assistant_completed_jobs.html']
+      ['availableRequestsContainer', 'Browse available service requests', 'verified-assistant_available-requests.html'],
+      ['activeJobsContainer', 'Open your active jobs', 'verified-assistant_active-jobs.html'],
+      ['completedJobsContainer', 'View your completed jobs', 'verified-assistant_completed-jobs.html']
     ]) {
       const link = document.createElement('a');
       link.className = 'btn btn-primary'; link.href = href; link.textContent = text;

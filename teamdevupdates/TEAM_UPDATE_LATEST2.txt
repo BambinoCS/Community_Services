@@ -116,13 +116,13 @@ Those three historical files were already untracked when this task began.
   Shared base-path-aware URLs and redirects; support deferred script loading.
 - verified-assistant/frontend/dashboard.html
   Guard formerly empty legacy dashboard URL and redirect to canonical role dashboard.
-- verified-assistant/frontend/verified_assistant_active_jobs.html
+- verified-assistant/frontend/verified-assistant_active-jobs.html
   Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
 - verified-assistant/frontend/verified_assistant_availible_requests.html
   Guard formerly empty available-requests page and provide honest Phase 2 placeholder.
-- verified-assistant/frontend/verified_assistant_dashboard.html
+- verified-assistant/frontend/verified-assistant_dashboard.html
   Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
-- verified-assistant/frontend/verified_assistant_profile.html
+- verified-assistant/frontend/verified-assistant_profile.html
   Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
 - verified-assistant/frontend/verified_assistants_complefed_jobs.html
   Add hidden auth-check shell, shared client/guard/developer scripts, logout/account bar and scoped developer CSS; repair role navigation where needed. Existing business content preserved.
@@ -270,9 +270,9 @@ community-user/frontend/commubity_user_requests.html -> community-user_requests.
 community-user/frontend/community-user_request-help.html -> community-user_request-help.js
 community-user/frontend/community_user_browse_requests.html -> community-user_browse-requests.js
 verified-assistant/frontend/verified_assistants_complefed_jobs.html -> verified-assistant_completed-jobs.js
-verified-assistant/frontend/verified_assistant_active_jobs.html -> verified-assistant_active-jobs.js
-verified-assistant/frontend/verified_assistant_profile.html -> ../../shared/frontend/validation.js
-verified-assistant/frontend/verified_assistant_profile.html -> verified-assistant_profile.js
+verified-assistant/frontend/verified-assistant_active-jobs.html -> verified-assistant_active-jobs.js
+verified-assistant/frontend/verified-assistant_profile.html -> ../../shared/frontend/validation.js
+verified-assistant/frontend/verified-assistant_profile.html -> verified-assistant_profile.js
 verified-assistant/frontend/verigied_assistant_training.html -> verified-assistant_training.js
 Do not blindly remap these: some backend-named files contain mismatched page code.
 

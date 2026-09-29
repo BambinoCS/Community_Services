@@ -329,7 +329,7 @@
   <script defer src="../../shared/frontend/service-request-page.js"></script>
   <script defer src="community-user_requests.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
-<style>.item-card { overflow-wrap:anywhere; } .actions { flex-wrap:wrap; align-items:center; margin-bottom:16px; } .message-banner { overflow-wrap:anywhere; }</style>
+<style>.item-card { overflow-wrap:anywhere; } .actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px; } .message-banner { overflow-wrap:anywhere; } #service-message { margin:16px 0; }</style>
 </head>
 
 <body data-auth-area="community_user">
@@ -351,7 +351,7 @@
   <main>
     <section class="page-heading">
       <h1>My Requests</h1>
-      <p>Track your service and item requests from submission to completion. You can cancel a request while it is open.</p>
+      <p>Track the status of problems, services, and items you've requested.</p>
     </section>
 
     <div class="filters-bar">
@@ -371,7 +371,8 @@
         <select id="typeFilter">
           <option value="">All types</option>
           <option value="service">Service</option>
-          <option value="resource">Items</option>
+          <option value="resource">Resource</option>
+          <option value="problem">Problem</option>
         </select>
       </div>
     </div>
@@ -383,6 +384,7 @@
 
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
+  <script src="community-api.js"></script>
 
 </div>
 </body>

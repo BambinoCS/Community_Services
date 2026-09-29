@@ -3,9 +3,9 @@
   const statuses = { open: 'Open', assigned: 'Assigned', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled' };
   const empty = { mine: 'No requests yet. Submit one from Request Help.', available: 'No available requests right now.',
     active: 'No active jobs. Accepted requests will appear here.', completed: 'No completed jobs yet.' };
-  const labels = { accept: 'Accept request', cancel: 'Cancel request', start: 'Start job', complete: 'Complete job' };
+  const labels = { accept: 'Accept request', cancel: 'Cancel request', cancelResource: 'Cancel request', start: 'Start job', complete: 'Complete job' };
   const confirmations = { accept: 'Accept this request? You will be responsible for this job.',
-    cancel: 'Cancel this open request?', start: 'Start this job now?', complete: 'Mark this job as completed? This cannot be undone here.' };
+    cancel: 'Cancel this open request?', cancelResource: 'Cancel this open item request?', start: 'Start this job now?', complete: 'Mark this job as completed? This cannot be undone here.' };
   function element(tag, text, className) {
     const el = document.createElement(tag);
     if (text !== undefined) el.textContent = text;
@@ -26,7 +26,10 @@
     let state = null, rows = [], offset = 0, sequence = 0, busy = false, loading = false;
     const filters = ['statusFilter', 'typeFilter', 'categoryFilter', 'urgencyFilter'].map(id => document.getElementById(id)).filter(Boolean);
     function allowedAction(row) {
-      if (mode === 'mine' && row.status === 'open') return 'cancel';
+      if (mode === 'mine' && row.status === 'open') {
+        if (row.request_type === 'service') return 'cancel';
+        if (row.request_type === 'resource') return 'cancelResource';
+      }
       if (!AuthPolicy.verified(state)) return null;
       if (mode === 'available' && row.status === 'open' && row.user_id !== state.user.id) return 'accept';
       if (mode === 'active') return row.status === 'assigned' ? 'start' : row.status === 'in_progress' ? 'complete' : null;
@@ -42,11 +45,12 @@
       for (const row of filtered) {
         const card = element('article', undefined, 'item-card');
         const top = element('div', undefined, 'item-card-top');
-        top.append(element('h3', ServiceRequests.categoryLabel(row.request_type, row.category)));
+        top.append(element('h3', row.item_name || ServiceRequests.categoryLabel(row.request_type, row.category)));
         top.append(element('span', statuses[row.status] || 'Unknown', 'badge badge-' + (Object.hasOwn(statuses, row.status) ? row.status : 'neutral')));
         card.append(top, element('p', row.description, 'meta'), element('p', 'Location: ' + (row.location || 'Not provided'), 'meta'));
-        if (row.request_type === 'resource' && row.quantity != null) card.append(element('p', 'Quantity: ' + row.quantity, 'meta'));
         if (row.preferred_date) card.append(element('p', 'Preferred: ' + row.preferred_date + ' ' + (row.preferred_time || '').slice(0, 5), 'meta'));
+        if (row.request_type === 'resource' && row.quantity != null) card.append(element('p', 'Quantity: ' + row.quantity, 'meta'));
+        if (row.problems_addressed?.length) card.append(element('p', 'Problems addressed: ' + row.problems_addressed.join(', ').replaceAll('_', ' '), 'meta'));
         if (row.urgency) card.append(element('p', 'Urgency: ' + row.urgency, 'meta'));
         if (row.additional_info) card.append(element('p', row.additional_info, 'meta'));
         if (row.completed_at) card.append(element('p', 'Completed: ' + new Date(row.completed_at).toLocaleString(), 'meta'));
@@ -100,8 +104,7 @@
         await ServiceRequests.transition(action, id);
         busy = false;
         await load();
-        // A failed refresh must keep its error instead of claiming a successful reload.
-        if (!status.textContent) status.textContent = ({ accept: 'Request accepted. Open Active Jobs to start it.', cancel: 'Request cancelled.',
+        if (!status.textContent) status.textContent = ({ accept: 'Request accepted. Open Active Jobs to start it.', cancel: 'Request cancelled.', cancelResource: 'Request cancelled.',
           start: 'Job started.', complete: 'Job completed. You can find it in Completed Jobs.' })[action];
       } catch (error) {
         busy = false; render(); status.textContent = ServiceRequests.message(error);

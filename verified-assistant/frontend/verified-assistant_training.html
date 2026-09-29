@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Available Requests</title>
+  <title>Training</title>
 
   <style>
     :root {
@@ -296,7 +296,6 @@
       .modal-box { padding: 20px; }
     }
   </style>
-<style>.item-card { overflow-wrap:anywhere; } .actions { flex-wrap:wrap; align-items:center; margin-bottom:16px; } .message-banner { overflow-wrap:anywhere; }</style>
 <style>
 [hidden] { display:none !important; }
 .auth-shell { font:16px/1.6 Arial,sans-serif; color:#1f2937; background:#f4f6f8; padding:32px; min-height:100vh; }
@@ -318,76 +317,50 @@
 @media (prefers-reduced-motion:no-preference) { .dev-princess button { transition:background .15s,box-shadow .15s; } }
 @media (max-width:480px) { .dev-selector { margin:20px 12px; padding:20px; } .auth-account { flex-wrap:wrap; } }
 </style>
-<script defer src="../../shared/frontend/navigation.js"></script>
-<script defer src="../../shared/frontend/public-config.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
-<script defer src="../../shared/frontend/supabase-client.js"></script>
-<script defer src="../../shared/frontend/auth-policy.js"></script>
-<script defer src="../../shared/frontend/auth.js"></script>
-<script defer src="../../shared/frontend/developer-mode.js"></script>
-<script defer src="../../shared/frontend/service-requests.js"></script>
-<script defer src="../../shared/frontend/location.js"></script>
-<script defer src="../../shared/frontend/service-request-page.js"></script>
-<script defer src="verified_assistant_available_requests.js"></script>
-<script defer src="../../shared/frontend/auth-guard.js"></script>
+  <script defer src="../../shared/frontend/navigation.js"></script>
+  <script defer src="../../shared/frontend/public-config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+  <script defer src="../../shared/frontend/supabase-client.js"></script>
+  <script defer src="../../shared/frontend/auth-policy.js"></script>
+  <script defer src="../../shared/frontend/auth.js"></script>
+  <script defer src="../../shared/frontend/developer-mode.js"></script>
+  <script defer src="../../shared/frontend/auth-guard.js"></script>
 </head>
 
 <body data-auth-area="assistant">
 <section id="auth-shell" class="auth-shell"><p role="status">Checking your account…</p><button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button><noscript><p>JavaScript is required to sign in and verify access.</p></noscript></section>
 <div id="protected-content" hidden>
 <div class="auth-account"><span data-auth-name></span><button type="button" data-auth-logout>Sign out</button></div>
-
   <header class="app-header">
-    <a class="back-link" href="verified_assistant_dashboard.html">← Back to Dashboard</a>
+    <a class="back-link" href="verified-assistant_dashboard.html">← Back to Dashboard</a>
   </header>
   <nav class="app-nav">
-    <a href="verified_assistant_dashboard.html">Dashboard</a>
-    <a href="verified_assistant_available_requests.html">Available Requests</a>
-    <a href="verified_assistant_active_jobs.html">Active Jobs</a>
-    <a href="verified_assistant_completed_jobs.html">Completed Jobs</a>
-    <a href="verified_assistant_training.html">Training</a>
-    <a href="verified_assistant_profile.html">Profile</a>
+    <a href="verified-assistant_dashboard.html">Dashboard</a>
+    <a href="verified-assistant_available-requests.html">Available Requests</a>
+    <a href="verified-assistant_active-jobs.html">Active Jobs</a>
+    <a href="verified-assistant_completed-jobs.html">Completed Jobs</a>
+    <a href="verified-assistant_training.html">Training</a>
+    <a href="verified-assistant_profile.html">Profile</a>
   </nav>
 
   <main>
     <section class="page-heading">
-      <h1>Available Requests</h1>
-      <p>Eligible open service requests you can accept.</p>
+      <h1>Training</h1>
+      <p>Complete the required training modules to become eligible for protected service jobs.</p>
     </section>
 
-    <div id="verificationNotice" class="message-banner"></div>
+    <section class="card" style="margin-bottom:22px;">
+      <h3>Overall Progress</h3>
+      <div class="progress-bar"><div class="progress-bar-fill" id="overallProgressFill" style="width:0%;"></div></div>
+      <p class="hint" id="overallProgressLabel" style="margin-top:8px;"></p>
+    </section>
 
-    <div class="filters-bar">
-      <div class="form-group">
-        <label for="categoryFilter">Category</label>
-        <select id="categoryFilter">
-          <option value="">All categories</option>
-          <option value="food_water_delivery">Food / Water Delivery</option>
-          <option value="grocery_collection">Grocery Collection</option>
-          <option value="elderly_assistance">Elderly Assistance</option>
-          <option value="public_transport_assistance">Public Transport Assistance</option>
-          <option value="healthcare_facility_assistance">Healthcare Facility Assistance</option>
-          <option value="donated_resource_delivery">Donated Resource Delivery</option>
-          <option value="other_approved_service">Other Approved Service</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="urgencyFilter">Urgency</label>
-        <select id="urgencyFilter">
-          <option value="">All urgencies</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
-      </div>
-    </div>
-
-    <section id="requestsContainer" class="grid"></section>
+    <section id="modulesContainer" class="grid-2"></section>
   </main>
 
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
-
+  <script src="verified-assistant_training.js"></script>
 </div>
 </body>
 </html>

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const searchForm = document.getElementById('itemSearchForm');
+  const searchForm = document.getElementById('donationSearchForm');
   const searchInput = document.getElementById('itemSearchInput');
   const searchButton = document.getElementById('itemSearchButton');
   const resultsGrid = document.getElementById('searchResults');
@@ -39,6 +39,13 @@
     return CommunityAuth.getClient().storage.from('donation-images').getPublicUrl(path).data.publicUrl;
   }
 
+  function requestItemLink(itemName) {
+    const link = document.createElement('a');
+    link.href = 'community-user_request-new-item.html?item=' + encodeURIComponent(itemName || '');
+    link.textContent = 'Need this item? Request it →';
+    return link;
+  }
+
   function renderCard(donation, firstImagePath) {
     const card = document.createElement('article');
     card.className = 'result-card';
@@ -63,11 +70,20 @@
       link.textContent = 'Get Directions';
       card.appendChild(link);
     }
-    const requestLink = document.createElement('a');
-    requestLink.href = 'community-user_request-help.html';
-    requestLink.textContent = "Can't find what you need? Request it";
-    card.appendChild(requestLink);
+    card.appendChild(requestItemLink(donation.item_name));
     return card;
+  }
+
+  function renderNoMatch(term) {
+    const card = document.createElement('article');
+    card.className = 'result-card';
+    card.appendChild(textElement('h4', 'No available item found'));
+    card.appendChild(textElement('p', `We could not find “${term}” in currently available donations.`, 'meta'));
+    const link = document.createElement('a');
+    link.href = 'community-user_request-new-item.html?item=' + encodeURIComponent(term);
+    link.textContent = 'Request this item instead →';
+    card.appendChild(link);
+    resultsGrid.appendChild(card);
   }
 
   async function searchAvailableItems() {
@@ -76,41 +92,13 @@
     setMessage('Searching available items…', false);
     resultsGrid.replaceChildren();
     try {
-      const state = await CommunityAuth.state();
-      if (!state) throw new Error('Please sign in to continue.');
-      const db = CommunityAuth.getClient();
-      const now = new Date().toISOString();
-      let query = db.from('donations')
-        .select('id,item_name,category,description,quantity,location,latitude,longitude,available_from,available_until,created_at')
-        .eq('status', 'available')
-        .or(`available_from.is.null,available_from.lte.${now}`)
-        .or(`available_until.is.null,available_until.gte.${now}`)
-        .order('created_at', { ascending: false })
-        .limit(24);
       const term = searchInput.value.trim();
-      if (term) {
-        const safe = term.replace(/[%,()]/g, ' ').trim();
-        if (safe) {
-          query = query.or(`item_name.ilike.%${safe}%,description.ilike.%${safe}%,location.ilike.%${safe}%`);
-        }
-      }
-      const { data: donations, error } = await query;
-      if (error) throw error;
-      const rows = donations || [];
-      const imagesByDonation = new Map();
-      if (rows.length) {
-        const { data: images } = await db.from('donation_images')
-          .select('donation_id,storage_path,sort_order')
-          .in('donation_id', rows.map((row) => row.id))
-          .order('sort_order', { ascending: true });
-        for (const image of images || []) {
-          if (!imagesByDonation.has(image.donation_id)) imagesByDonation.set(image.donation_id, image.storage_path);
-        }
-      }
-      resultsGrid.replaceChildren(...rows.map((row) => renderCard(row, imagesByDonation.get(row.id))));
+      const rows = await CommunityAPI.searchAvailableDonations(term);
+      resultsGrid.replaceChildren(...rows.map((row) => renderCard(row, row.first_image_path)));
       if (rows.length) {
         setMessage(`${rows.length} item${rows.length === 1 ? '' : 's'} available. Contact the donor through the platform to arrange collection.`, false);
       } else {
+        if (term) renderNoMatch(term);
         setMessage(term ? 'No available items match your search.' : 'No available items right now.', false);
       }
     } catch (error) {

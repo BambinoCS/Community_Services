@@ -40,7 +40,7 @@ before(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;
   `);
-  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_service_request_workflow.sql']) {
+  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_request_help_fields.sql', '005_service_request_workflow.sql', '006_location_resource_problem.sql']) {
     await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations', name), 'utf8'));
   }
   for (const id of Object.values(ids)) await db.query('insert into auth.users(id) values ($1)', [id]);
@@ -95,9 +95,9 @@ async function create(overrides = {}) {
     urgency: 'medium', additional: null, id: randomUUID(), ...overrides
   };
   return (await db.query(`select * from public.create_service_request(
-    $1::text, $2::text, $3::text, $4::date, $5::time, $6::text, $7::text, $8::uuid
+    $1::text, $2::text, $3::text, $4::date, $5::time, $6::text, $7::text, $8::uuid, $9::text[]
   )`, [fields.category, fields.description, fields.location, fields.date, fields.time,
-    fields.urgency, fields.additional, fields.id])).rows[0];
+    fields.urgency, fields.additional, fields.id, fields.problems || []])).rows[0];
 }
 
 async function rpc(action, id) {
@@ -393,4 +393,35 @@ databaseTest('private helpers are identity-bound and private mutation helper can
     assert.equal(fn.prosecdef, true);
     assert.deepEqual(fn.proconfig, ['search_path=""']);
   }
+});
+
+databaseTest('team service categories and structured problems survive creation and replay', async () => {
+  await asUser(ids.owner);
+  for (const category of ['elderly_vulnerable_assistance','public_transport_accompaniment','healthcare_access']) {
+    const input={category,problems:['transport_access','healthcare_access'],id:randomUUID()};
+    const row=await create(input);
+    assert.deepEqual(row.problems_addressed,input.problems);
+    assert.equal((await create(input)).id,row.id);
+    await expectFailure(()=>create({...input,problems:['food_access']}),'P0001');
+  }
+  for(const problems of [['unknown'],[null],Array(8).fill('food_access')]) {
+    await expectFailure(()=>create({problems}),'22023');
+  }
+});
+databaseTest('item creation remains allowed but cannot forge service lifecycle or identity', async () => {
+  await asUser(ids.owner);
+  const insert=(owner=ids.owner,status='open')=>db.query(
+    "insert into public.requests(user_id,request_type,category,description,item_name,quantity,status) values ($1,'resource','food','Need food','Rice',2,$2) returning *",[owner,status]);
+  const row=(await insert()).rows[0];
+  assert.equal(row.item_name,'Rice');assert.equal(row.quantity,2);
+  await expectFailure(()=>insert(ids.stranger),'42501');
+  await expectFailure(()=>insert(ids.owner,'completed'),'42501');
+  await expectFailure(()=>db.query("update public.requests set status='completed' where id=$1",[row.id]),'42501');
+  await asUser(ids.assistant);await expectFailure(()=>insert(ids.assistant),'42501');
+  await asUser(ids.stranger);await expectFailure(()=>db.query('select * from public.cancel_resource_request($1)',[row.id]),'42501');
+  await asUser(ids.owner);
+  assert.equal((await db.query('select * from public.cancel_resource_request($1)',[row.id])).rows[0].status,'cancelled');
+  await expectFailure(()=>db.query('select * from public.cancel_resource_request($1)',[row.id]),'P0001');
+  const service=await create();
+  await expectFailure(()=>db.query('select * from public.cancel_resource_request($1)',[service.id]),'42501');
 });

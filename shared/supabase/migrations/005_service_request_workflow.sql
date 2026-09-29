@@ -1,6 +1,6 @@
 -- Service requests: validated creation and atomic assignment/status changes.
--- Apply after migrations 001-003 using a trusted database administrator.
--- All browser writes to requests/assignments now use the RPCs below.
+-- Apply after migrations 001-004 using a trusted database administrator.
+-- Service writes and all status changes use RPCs; resource creation retains restricted INSERT.
 begin;
 
 -- Avoid requests -> assignments -> requests recursive SELECT policies.
@@ -48,7 +48,7 @@ for select to authenticated using (
 );
 
 -- A requester must not forge status, assignment, owner or timestamps by
--- bypassing the UI. Unimplemented resource/problem writes need their own RPCs.
+-- bypassing the UI. Only resource INSERT is re-granted below, under strict RLS.
 drop policy if exists "Community users can create own requests" on public.requests;
 drop policy if exists "Users can update own requests" on public.requests;
 revoke all on table public.requests, public.assignments from public, anon, authenticated;
@@ -62,7 +62,8 @@ create or replace function public.create_service_request(
     p_preferred_time time,
     p_urgency text,
     p_additional_info text default null,
-    p_request_id uuid default pg_catalog.gen_random_uuid()
+    p_request_id uuid default pg_catalog.gen_random_uuid(),
+    p_problems_addressed text[] default null
 )
 returns public.requests language plpgsql security definer set search_path = ''
 as $$
@@ -90,7 +91,8 @@ begin
     if p_category is null or p_category not in (
         'food_water_delivery', 'grocery_collection', 'elderly_assistance',
         'public_transport_assistance', 'healthcare_facility_assistance',
-        'donated_resource_delivery', 'other_approved_service'
+        'donated_resource_delivery', 'other_approved_service',
+        'elderly_vulnerable_assistance', 'public_transport_accompaniment', 'healthcare_access'
     ) then
         raise exception using errcode = '22023', message = 'Choose a valid service category.';
     end if;
@@ -105,6 +107,13 @@ begin
     end if;
     if p_urgency is null or p_urgency not in ('low', 'medium', 'high') then
         raise exception using errcode = '22023', message = 'Choose low, medium or high urgency.';
+    end if;
+    p_problems_addressed := coalesce(p_problems_addressed, array[]::text[]);
+    if not (p_problems_addressed <@ array['food_access','water_access','transport_access',
+        'healthcare_access','elderly_vulnerable_support','resource_delivery','other']::text[])
+        or pg_catalog.cardinality(p_problems_addressed) > 7
+        or pg_catalog.array_position(p_problems_addressed, null) is not null then
+        raise exception using errcode = '22023', message = 'Choose valid problems addressed.';
     end if;
     if p_request_id is null or p_preferred_date is null or not pg_catalog.isfinite(p_preferred_date)
         or p_preferred_time is null or p_preferred_time >= time '24:00' then
@@ -126,7 +135,8 @@ begin
                 and v_request.preferred_date = p_preferred_date
                 and v_request.preferred_time = p_preferred_time
                 and v_request.urgency = p_urgency
-                and v_request.additional_info is not distinct from p_additional_info then
+                and v_request.additional_info is not distinct from p_additional_info
+                and coalesce(v_request.problems_addressed, array[]::text[]) = p_problems_addressed then
                 return v_request;
             end if;
             raise exception using errcode = 'P0001', message = 'This request reference cannot be reused. Start a new request.';
@@ -137,10 +147,10 @@ begin
         end if;
         insert into public.requests (
             id, user_id, request_type, category, description, location,
-            preferred_date, preferred_time, urgency, additional_info, status
+            preferred_date, preferred_time, urgency, additional_info, status, problems_addressed
         ) values (
             p_request_id, v_user_id, 'service', p_category, p_description, p_location,
-            p_preferred_date, p_preferred_time, p_urgency, p_additional_info, 'open'
+            p_preferred_date, p_preferred_time, p_urgency, p_additional_info, 'open', p_problems_addressed
         ) on conflict (id) do nothing returning * into v_request;
         if found then return v_request; end if;
     end loop;
@@ -281,15 +291,49 @@ end;
 $$;
 
 revoke all on function private.advance_service_request(uuid, text) from public, anon, authenticated;
-revoke all on function public.create_service_request(text, text, text, date, time, text, text, uuid) from public, anon, authenticated;
+revoke all on function public.create_service_request(text, text, text, date, time, text, text, uuid, text[]) from public, anon, authenticated;
 revoke all on function public.accept_service_request(uuid) from public, anon, authenticated;
 revoke all on function public.cancel_service_request(uuid) from public, anon, authenticated;
 revoke all on function public.start_service_request(uuid) from public, anon, authenticated;
 revoke all on function public.complete_service_request(uuid) from public, anon, authenticated;
-grant execute on function public.create_service_request(text, text, text, date, time, text, text, uuid) to authenticated;
+grant execute on function public.create_service_request(text, text, text, date, time, text, text, uuid, text[]) to authenticated;
 grant execute on function public.accept_service_request(uuid) to authenticated;
 grant execute on function public.cancel_service_request(uuid) to authenticated;
 grant execute on function public.start_service_request(uuid) to authenticated;
 grant execute on function public.complete_service_request(uuid) to authenticated;
+
+-- Preserve the team's item-request creation without reopening service writes.
+grant insert (user_id, request_type, category, description, location, preferred_date,
+    preferred_time, urgency, additional_info, status, item_name, quantity, problems_addressed)
+    on public.requests to authenticated;
+drop policy if exists "Community users can create resource requests" on public.requests;
+create policy "Community users can create resource requests" on public.requests
+for insert to authenticated with check (
+    user_id = (select auth.uid()) and (select private.current_user_role()) = 'community_user'
+    and request_type = 'resource' and status = 'open'
+);
+
+create or replace function public.cancel_resource_request(p_request_id uuid)
+returns public.requests language plpgsql security definer set search_path = ''
+as $$
+declare v_request public.requests%rowtype;
+begin
+    if auth.uid() is null then
+        raise exception using errcode = '42501', message = 'Sign in to cancel a request.';
+    end if;
+    select r.* into v_request from public.requests r where r.id=p_request_id
+        and r.user_id=auth.uid() and r.request_type='resource' for update;
+    if not found then
+        raise exception using errcode = '42501', message = 'You can only cancel your own item requests.';
+    end if;
+    if v_request.status <> 'open' or exists(select 1 from public.assignments a where a.request_id=p_request_id) then
+        raise exception using errcode = 'P0001', message = 'Only open, unassigned item requests can be cancelled.';
+    end if;
+    update public.requests set status='cancelled' where id=p_request_id returning * into v_request;
+    return v_request;
+end;
+$$;
+revoke all on function public.cancel_resource_request(uuid) from public, anon, authenticated;
+grant execute on function public.cancel_resource_request(uuid) to authenticated;
 
 commit;

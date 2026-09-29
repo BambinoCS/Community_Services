@@ -4,10 +4,13 @@
   const categories = Object.freeze({
     food_water_delivery: 'Food / Water Delivery',
     grocery_collection: 'Grocery Collection',
-    elderly_assistance: 'Elderly Assistance',
-    public_transport_assistance: 'Public Transport Assistance',
-    healthcare_facility_assistance: 'Healthcare Facility Assistance',
+    elderly_vulnerable_assistance: 'Elderly / Vulnerable Assistance',
+    public_transport_accompaniment: 'Public Transport Accompaniment',
+    healthcare_access: 'Healthcare Access',
     donated_resource_delivery: 'Donated Resource Delivery',
+    child_supervision: 'Child Supervision',
+    pet_support: 'Pet Support',
+    administrative_guidance: 'Administrative Guidance',
     other_approved_service: 'Other Approved Service'
   });
   const resourceCategories = Object.freeze({
@@ -16,23 +19,22 @@
     clothing: 'Clothing',
     school_supplies: 'School Supplies',
     household_goods: 'Household Goods',
+    other_essentials: 'Other Essentials',
     other: 'Other'
   });
   const reportCategories = Object.freeze({
-    pothole: 'Pothole / Road Damage',
-    streetlight: 'Streetlight Fault',
-    water_leak: 'Water Leak',
-    waste: 'Waste / Illegal Dumping',
-    vandalism: 'Vandalism / Graffiti',
-    safety: 'Safety Concern',
-    other: 'Other'
+    community_issue: 'Community Issue',
+    platform_issue: 'Platform Issue',
+    safety_issue: 'Safety Issue',
+    service_issue: 'Service Issue',
+    other_issue: 'Other Issue'
   });
-  const columns = 'id,user_id,request_type,category,description,quantity,location,latitude,longitude,preferred_date,preferred_time,urgency,additional_info,status,created_at,updated_at';
+  const columns = 'id,user_id,request_type,category,description,item_name,quantity,problems_addressed,location,latitude,longitude,preferred_date,preferred_time,urgency,additional_info,status,created_at,updated_at';
   const pageSize = 50;
   function categoryLabel(type, value) {
-    if (type === 'resource') return resourceCategories[value] || value;
-    if (type === 'report') return reportCategories[value] || value;
-    return categories[value] || value;
+    const source = type === 'resource' ? resourceCategories : type === 'report' ? reportCategories : categories;
+    if (value && Object.hasOwn(source, value)) return source[value];
+    return value ? String(value).replace(/_/g, ' ').replace(/\b\w/g, function (char) { return char.toUpperCase(); }) : 'General request';
   }
   async function identity() {
     const state = await CommunityAuth.state();
@@ -55,36 +57,10 @@
       p_urgency: input.urgency,
       p_additional_info: input.additionalInfo?.trim() || null,
       p_request_id: requestId,
+      p_problems_addressed: input.problemsAddressed || null,
       p_latitude: input.latitude ?? null,
       p_longitude: input.longitude ?? null
     }));
-  }
-  async function createResource(input, requestId) {
-    await identity();
-    return result(CommunityAuth.getClient().rpc('create_resource_request', {
-      p_category: input.category,
-      p_description: input.description.trim(),
-      p_quantity: input.quantity,
-      p_location: input.location.trim(),
-      p_urgency: input.urgency,
-      p_additional_info: input.additionalInfo?.trim() || null,
-      p_request_id: requestId,
-      p_latitude: input.latitude ?? null,
-      p_longitude: input.longitude ?? null
-    }));
-  }
-  async function report(input) {
-    const state = await identity();
-    return result(CommunityAuth.getClient().from('reports').insert({
-      user_id: state.user.id,
-      category: input.problemType,
-      description: input.description.trim(),
-      location: input.location.trim(),
-      urgency: input.urgency,
-      additional_info: input.additionalInfo?.trim() || null,
-      latitude: input.latitude ?? null,
-      longitude: input.longitude ?? null
-    }).select().single());
   }
   async function list(mode, offset = 0) {
     const state = await identity();
@@ -106,7 +82,7 @@
       assignment_id: row.id, status: row.status, completed_at: row.completed_at }));
   }
   async function transition(action, requestId) {
-    const methods = { accept: 'accept_service_request', cancel: 'cancel_service_request',
+    const methods = { accept: 'accept_service_request', cancel: 'cancel_service_request', cancelResource: 'cancel_resource_request',
       start: 'start_service_request', complete: 'complete_service_request' };
     if (!Object.hasOwn(methods, action)) throw new Error('This action is not supported.');
     await identity();
@@ -125,5 +101,5 @@
     return 'The request could not be completed. Check your connection and try again.';
   }
   window.ServiceRequests = Object.freeze({ categories, resourceCategories, reportCategories,
-    categoryLabel, pageSize, create, createResource, report, list, transition, message });
+    categoryLabel, pageSize, create, list, transition, message });
 })();

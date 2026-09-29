@@ -10,11 +10,11 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '../..');
 const prefix = '/Community_Services/';
 const pages = {
-  help: 'community-user/frontend/community-user_request-help.html',
+  help: 'community-user/frontend/community-user_request-service.html',
   mine: 'community-user/frontend/community-user_requests.html',
-  available: 'verified-assistant/frontend/verified_assistant_available_requests.html',
-  active: 'verified-assistant/frontend/verified_assistant_active_jobs.html',
-  completed: 'verified-assistant/frontend/verified_assistant_completed_jobs.html',
+  available: 'verified-assistant/frontend/verified-assistant_available-requests.html',
+  active: 'verified-assistant/frontend/verified-assistant_active-jobs.html',
+  completed: 'verified-assistant/frontend/verified-assistant_completed-jobs.html',
   dashboard: 'community-user/frontend/community-user_dashboard.html',
   donate: 'community-user/frontend/community-user_donate.html',
   browse: 'community-user/frontend/community-user_browse-requests.html'
@@ -97,16 +97,17 @@ function backend() {
       return error('P0001');
     }
     if (call.kind === 'query') {
-      if (call.table === 'profiles') return {data:{id:account.id, role:account.role || 'community_user', first_name:'Test', last_name:account.id}};
-      if (call.table === 'assistants') return {data:account.assistant || null};
-      if (call.table === 'developer_accounts') return {data:account.developer ? {user_id:account.id} : null};
-      if (db.failQuery) { const code=db.failQuery; db.failQuery=null; return error(code); }
       if (call.insert) {
+        if (call.table === 'requests') for (const row of call.insert) assert.equal(row.user_id,account.id);
         const defaults = call.table === 'donations' ? {status:'available'} : {};
         const rows = call.insert.map(row => ({...defaults, id:randomUUID(), ...row}));
         db[call.table].push(...rows);
         return {data:structuredClone(call.single ? rows[0] : rows)};
       }
+      if (call.table === 'profiles') return {data:{id:account.id, role:account.role || 'community_user', first_name:'Test', last_name:account.id}};
+      if (call.table === 'assistants') return {data:account.assistant || null};
+      if (call.table === 'developer_accounts') return {data:account.developer ? {user_id:account.id} : null};
+      if (db.failQuery) { const code=db.failQuery; db.failQuery=null; return error(code); }
       // Model account visibility independently of the query's filters.
       let rows;
       if (call.table === 'requests') {
@@ -131,18 +132,16 @@ function backend() {
     assert.ok(account.id, 'RPC requires an authenticated principal');
     assert.equal(Object.keys(call.args).some(key => /user|assistant|role|status/.test(key)),false,'client must not supply authority fields');
     let row=db.requests.find(request => request.id === call.args.p_request_id);
-    if (call.name === 'create_service_request' || call.name === 'create_resource_request') {
+    if (call.name === 'create_service_request') {
       if (row && row.user_id !== account.id) return error('42501');
-      if (!row) row=db.request({id:call.args.p_request_id,user_id:account.id,
-        request_type:call.name === 'create_resource_request' ? 'resource' : 'service',
-        category:call.args.p_category, description:call.args.p_description, quantity:call.args.p_quantity ?? null,
-        location:call.args.p_location, preferred_date:call.args.p_preferred_date ?? null,
-        preferred_time:call.args.p_preferred_time ?? null, urgency:call.args.p_urgency,
-        additional_info:call.args.p_additional_info, latitude:call.args.p_latitude ?? null, longitude:call.args.p_longitude ?? null});
+      if (!row) row=db.request({id:call.args.p_request_id,user_id:account.id,category:call.args.p_category,
+        description:call.args.p_description,location:call.args.p_location,preferred_date:call.args.p_preferred_date,
+        preferred_time:call.args.p_preferred_time,urgency:call.args.p_urgency,additional_info:call.args.p_additional_info,
+        problems_addressed:call.args.p_problems_addressed,latitude:call.args.p_latitude ?? null,longitude:call.args.p_longitude ?? null});
     } else {
       if (!row) return error('P0001');
       const assignment=db.assignments.find(item => item.request_id === row.id);
-      if (call.name === 'cancel_service_request') {
+      if (['cancel_service_request','cancel_resource_request'].includes(call.name)) {
         if (row.user_id !== account.id) return error('42501');
         if (row.status !== 'open') return error('P0001');
         row.status='cancelled';
@@ -205,8 +204,8 @@ function backend() {
   const cards = page => page.locator('article.item-card');
   const action = (page,name) => page.getByRole('button',{name,exact:true}).click();
   async function fillRequest(page, description='Please help me collect groceries') {
-    await page.getByRole('button',{name:/Request Service/}).click();
-    await page.locator('#serviceCategory').selectOption('grocery_collection');
+    await page.locator('input[name=serviceCategory][value=grocery_collection]').check();
+    await page.locator('input[name=problemsAddressed][value=food_access]').check();
     await page.locator('#serviceDescription').fill(description);
     await page.locator('#serviceLocation').fill('Community hall');
     await page.locator('#servicePreferredDate').fill('2099-12-31');
@@ -217,9 +216,10 @@ function backend() {
     await scenario('service lifecycle persists across member and assistant accounts',async ({db,account}) => {
       const member=await account({id:'member'}), worker=await account(assistant('worker'));
       await open(member,'help'); await fillRequest(member);
-      await action(member,'Submit request');
-      await member.getByText('Your service request has been saved.',{exact:false}).waitFor();
+      await action(member,'Submit Service Request');
+      await member.getByText('Service request submitted successfully.',{exact:false}).waitFor();
       assert.equal(db.requests.length,1); assert.equal(db.requests[0].status,'open');
+      assert.deepEqual(db.requests[0].problems_addressed,['food_access']);
       await open(member,'mine'); await cards(member).filter({hasText:'Open'}).waitFor();
       await open(worker,'available'); await action(worker,'Accept request'); await message(worker,'Request accepted');
       await member.reload(); await cards(member).filter({hasText:'Assigned'}).waitFor();
@@ -236,20 +236,20 @@ function backend() {
     await scenario('lost create response retries the same ID without duplicates',async ({db,account}) => {
       const member=await account({id:'member'}); await open(member,'help'); await fillRequest(member);
       db.failRpc={code:'NETWORK',afterCommit:true}; db.delayRpc=200;
-      await action(member,'Submit request');
-      await member.locator('#requestServiceMessage').filter({hasText:'could not be completed'}).waitFor();
+      await action(member,'Submit Service Request');
+      await member.locator('#message').filter({hasText:'could not be completed'}).waitFor();
       assert.equal(await member.locator('#serviceDescription').inputValue(),'Please help me collect groceries');
       assert.equal(db.requests.length,1);
-      await action(member,'Submit request');
-      await member.getByText('Your service request has been saved.',{exact:false}).waitFor();
+      await action(member,'Submit Service Request');
+      await member.getByText('Service request submitted successfully.',{exact:false}).waitFor();
       const calls=db.calls.filter(call=>call.name==='create_service_request');
       assert.equal(calls.length,2); assert.equal(calls[0].args.p_request_id,calls[1].args.p_request_id);
       assert.equal(db.requests.length,1);
     });
     await scenario('blank description blocks submission and form fits mobile',async ({db,account}) => {
       const member=await account({id:'member'}); await open(member,'help'); await fillRequest(member,'   ');
-      await action(member,'Submit request');
-      assert.equal(await member.locator('#serviceDescription').evaluate(el=>el.validity.valid),false);
+      await action(member,'Submit Service Request');
+      await member.locator('#serviceDescriptionError').filter({hasText:'Please describe what you need.'}).waitFor();
       assert.equal(db.calls.filter(call=>call.kind==='rpc').length,0);
       assert.equal(await member.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true);
       fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
@@ -322,6 +322,39 @@ function backend() {
       assert.ok((await cards(member).textContent()).includes(payload));
       assert.equal(await member.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true);
     });
+    await scenario('team item and report pages still submit their structured fields',async ({db,account}) => {
+      const member=await account({id:'member'});
+      await member.goto(base+'community-user/frontend/community-user_request-new-item.html');
+      await member.locator('#protected-content').waitFor({state:'visible'});
+      await member.locator('#itemName').fill('Rice');
+      await member.locator('#itemCategory').selectOption('food');
+      await member.locator('#itemQuantity').fill('3');
+      await member.locator('#itemDescription').fill('Food for the household');
+      await member.locator('#itemLocation').fill('Community hall');
+      await member.locator('#itemUrgency').selectOption('medium');
+      await action(member,'Submit Item Request');
+      await member.locator('#message').filter({hasText:'Item request submitted successfully'}).waitFor();
+      assert.equal(db.requests[0].item_name,'Rice');assert.equal(db.requests[0].quantity,3);
+      await open(member,'mine');await cards(member).filter({hasText:'Rice'}).waitFor();
+      await member.goto(base+'community-user/frontend/community-user_report-problem.html');
+      await member.locator('#protected-content').waitFor({state:'visible'});
+      await member.locator('#problemType').selectOption('community_issue');
+      await member.locator('#problemDescription').fill('Broken street light');
+      await member.locator('#problemLocation').fill('Community hall');
+      await member.locator('#problemUrgency').selectOption('high');
+      await member.locator('#problemAdditional').fill('Near the entrance');
+      await action(member,'Submit Problem Report');
+      await member.locator('#message').filter({hasText:'Problem report submitted successfully'}).waitFor();
+      assert.equal(db.reports[0].urgency,'high');assert.equal(db.reports[0].additional_info,'Near the entrance');
+    });
+    await scenario('item requests remain visible and use their own cancellation RPC',async ({db,account}) => {
+      db.request({request_type:'resource',item_name:'Rice',quantity:2});
+      const member=await account({id:'member'}); await open(member,'mine'); await cards(member).waitFor();
+      assert.ok((await cards(member).textContent()).includes('Rice'));
+      assert.ok((await cards(member).textContent()).includes('Quantity: 2'));
+      await action(member,'Cancel request'); await message(member,'Request cancelled');
+      assert.equal(db.calls.filter(call=>call.name==='cancel_resource_request').length,1);
+    });
     await scenario('pagination exposes requests beyond the first fifty',async ({db,account}) => {
       for (let i=0;i<51;i++) db.request({description:'Request number '+i,created_at:new Date(Date.UTC(2026,0,1,0,0,i)).toISOString()});
       const member=await account({id:'member'}); await open(member,'mine'); await member.getByText('Request number 50',{exact:true}).waitFor();
@@ -334,59 +367,20 @@ function backend() {
     await scenario('live location button fills coordinates into the service request',async ({db,account}) => {
       const member=await account({id:'member',geolocation:{latitude:-25.7479,longitude:28.2293}});
       await open(member,'help');
-      await member.getByRole('button',{name:/Request Service/}).click();
-      const dialog=member.locator('#requestServiceModal');
-      await dialog.getByRole('button',{name:'Use my current location'}).click();
+      await member.getByRole('button',{name:'Use my current location'}).click();
       await member.locator('#serviceLocateStatus').filter({hasText:'Location captured'}).waitFor();
       assert.equal(await member.locator('#serviceLatitude').inputValue(),'-25.7479');
       assert.equal(await member.locator('#serviceLongitude').inputValue(),'28.2293');
-      assert.match(await member.locator('#serviceLocation').inputValue(),/-25\.747900, 28\.229300/);
-      await member.locator('#serviceCategory').selectOption('grocery_collection');
+      await member.locator('input[name=serviceCategory][value=grocery_collection]').check();
       await member.locator('#serviceDescription').fill('Please help me collect groceries');
       await member.locator('#servicePreferredDate').fill('2099-12-31');
       await member.locator('#servicePreferredTime').fill('10:30');
       await member.locator('#serviceUrgency').selectOption('medium');
-      await action(member,'Submit request');
-      await member.getByText('Your service request has been saved.',{exact:false}).waitFor();
+      await action(member,'Submit Service Request');
+      await member.getByText('Service request submitted successfully.',{exact:false}).waitFor();
       assert.equal(db.requests.length,1);
       assert.equal(db.requests[0].latitude,-25.7479);
       assert.equal(db.requests[0].longitude,28.2293);
-    });
-    await scenario('problem report saves through the reports table',async ({db,account}) => {
-      const member=await account({id:'member'}); await open(member,'help');
-      await member.getByRole('button',{name:/Report a Problem/}).click();
-      const dialog=member.locator('#reportProblemModal');
-      await dialog.locator('#problemType').selectOption('pothole');
-      await dialog.locator('#problemDescription').fill('Large pothole blocking the lane');
-      await dialog.locator('#problemLocation').fill('Main Road, Hatfield');
-      await dialog.locator('#problemUrgency').selectOption('high');
-      await action(member,'Submit report');
-      await member.getByText('Your report has been submitted.',{exact:false}).waitFor();
-      assert.equal(db.reports.length,1);
-      assert.equal(db.reports[0].category,'pothole');
-      assert.equal(db.reports[0].urgency,'high');
-      assert.equal(db.reports[0].location,'Main Road, Hatfield');
-    });
-    await scenario('item request saves as resource with quantity and shows in My Requests',async ({db,account}) => {
-      const member=await account({id:'member'}); await open(member,'help');
-      await member.getByRole('button',{name:/Request New Items/}).click();
-      const dialog=member.locator('#requestItemsModal');
-      await dialog.locator('#itemCategory').selectOption('food');
-      await dialog.locator('#itemDescription').fill('Rice and maize meal for a family of four');
-      await dialog.locator('#itemQuantity').fill('3');
-      await dialog.locator('#itemLocation').fill('Community hall');
-      await dialog.locator('#itemUrgency').selectOption('high');
-      await action(member,'Submit request');
-      await member.getByText('Your item request has been saved.',{exact:false}).waitFor();
-      assert.equal(db.requests.length,1);
-      assert.equal(db.requests[0].request_type,'resource');
-      assert.equal(db.requests[0].category,'food');
-      assert.equal(db.requests[0].quantity,3);
-      await open(member,'mine');
-      const card=cards(member).filter({hasText:'Rice and maize meal'});
-      await card.waitFor();
-      assert.match(await card.textContent(),/Quantity: 3/);
-      assert.match(await card.locator('h3').textContent(),/Food/);
     });
     await scenario('browse requests lists open item needs with directions and donate links',async ({db,account}) => {
       db.request({user_id:'another-member',request_type:'resource',category:'food',description:'Rice and maize meal',
