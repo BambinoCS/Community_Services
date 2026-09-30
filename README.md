@@ -2,7 +2,8 @@
 
 ## Donation chat, delivery assistance and admin completion
 
-Current handoff: **teamdevupdates/TEAM_UPDATE_LATEST8.txt**.
+Current setup handoff: **teamdevupdates/TEAM_UPDATE_LATEST9.txt**.
+Feature handoff: **teamdevupdates/TEAM_UPDATE_LATEST8.txt**.
 
 - Request a listed donation: choose **I can collect it myself** or **I need assistance**.
 - Donate a requested item from Browse Requests: choose **I can deliver it myself**
@@ -30,6 +31,36 @@ but have NOT been applied to live Supabase. Deploy the updated static site along
 these migrations. No new production dependency or environment variable is required.
 The existing migration 003 expects SELECT on developer_accounts from Supabase default
 privileges; ensure that grant exists as described under Developer Mode below.
+
+### Fix "Chat and delivery arrangements are not available yet"
+
+This message means the API cannot find a required chat table/function. Git commits
+and GitHub Pages deployments do not run database migrations. On 30 September 2026,
+the configured project's API reported missing `assistant_reviews`, `item_handoffs`,
+`chat_messages` and `admin_actions` (`PGRST205`).
+
+For a project with 001–006 installed and **none of 007–009 installed**, run:
+
+```sh
+node shared/scripts/build-workflow-setup.cjs
+```
+
+Open `test-results/community-workflows-setup.sql`, copy the entire file into your
+project's Supabase SQL Editor, and run it as the database administrator. The script
+uses the original migrations in one transaction, preserves application data, stops
+on missing prerequisites/conflicting objects, and requests an API schema refresh
+after success. It does not require any private key in website code. The generator
+only creates a local file; it does not connect to or update Supabase itself.
+
+If any of 007–009 are already installed, inspect the database and apply only the
+outstanding individual migrations in order. Do not rerun this bundle or remove
+existing tables. If the objects exist but the API still cannot see them, run
+`NOTIFY pgrst, 'reload schema';` in the trusted SQL Editor. Refresh the website after
+the API reloads, then verify collection/delivery chat with separate real accounts.
+
+Test the setup transaction with `node --test shared/tests/workflow-setup.test.cjs`
+using the PGlite configuration below. Set `WORKFLOW_SETUP_BUNDLE=1` when running
+`node shared/tests/chat-browser.cjs` to exercise the UI using the bundled setup.
 
 ## Assistant workspace completion
 
@@ -313,7 +344,7 @@ reverse geocoding; both need user permission and internet access, and Nominatim
 has public usage limits. Where either is unavailable the forms still accept
 typed addresses and directions fall back to the address text.
 
-Team handoffs belong in **`teamdevupdates/`**. Update 8 is current; update 6 supersedes the historical
+Team handoffs belong in **`teamdevupdates/`**. Update 9 covers setup repair and update 8 covers features; update 6 supersedes the historical
 update 4/5 integration and Git-status instructions; older documents mentioning
 `shared/docs` or a root `TEAM_UPDATE_LATEST.txt` are stale. The external option 3
 backup and original newbranch remain available for comparison.

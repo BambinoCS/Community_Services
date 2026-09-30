@@ -1,0 +1,52 @@
+COMMUNITY SERVICES — CHAT SETUP REPAIR
+Date: 30 September 2026
+Previous feature handoff: TEAM_UPDATE_LATEST8.txt
+
+Reported problem
+The Open chat action displays "Chat and delivery arrangements are not available
+yet. Please contact the project team to finish setup."
+
+Diagnosis
+A read-only check of the configured Supabase REST API returned PGRST205 for
+assistant_reviews, item_handoffs, chat_messages and admin_actions. Donations
+returned permission denied to the anonymous caller, confirming that the API was
+reachable and the base donation table was present. No rows were requested/read.
+The observed workflow objects are missing from the live API schema cache, matching
+the previous handoff's unapplied migrations 007-009. A Git push cannot apply SQL.
+The Supabase SQL Editor requires user sign-in, so no live SQL was applied in this
+repair preparation. Do not describe the production chat as fixed yet.
+
+Prepared repair
+Run: node shared/scripts/build-workflow-setup.cjs
+Output: test-results/community-workflows-setup.sql (ignored local artifact)
+
+The generator combines the unchanged canonical 007, 008 and 009 migrations into
+one transaction. It checks base workflow markers and refuses to run if any target
+workflow table already exists. An error rolls back all updates. Existing user
+data is preserved. After success, NOTIFY pgrst reloads the API schema cache.
+The generator performs no network calls and requires no database credentials.
+
+Run the entire generated SQL file once in the correct project's trusted Supabase
+SQL Editor as the database administrator. The bundle is for projects with 001-006
+already installed and all of 007-009 absent. If some updates already exist, inspect
+them and apply only outstanding canonical migrations; do not delete existing data
+or rerun all migrations. If tables/functions already exist but are absent from the
+API, refresh the schema cache instead. README contains the exact instructions.
+
+Validation
+- 3 disposable SQL setup tests passed: preserves an existing donation and RLS,
+  refuses missing prerequisites/repeated setup, rolls back earlier migrations
+  when a later migration fails.
+- WORKFLOW_SETUP_BUNDLE=1 node shared/tests/chat-browser.cjs: 10 scenarios passed,
+  including collection, delivery, both assistance paths, private chat, retry safety,
+  history, participant restrictions, admin records and developer denial.
+- Static checks: 68 JavaScript/CJS files, 31 HTML pages, no broken references or
+  exposed private credentials. git diff --check passed.
+- Tests used local PGlite and Edge, not production users or data.
+
+Remaining live verification
+Sign in to the project's Supabase SQL Editor, inspect schema prerequisites, apply
+the appropriate missing migrations, verify API table/RPC discovery, refresh the
+site, and test collection/delivery with separate real accounts. Do not remove the
+frontend setup error or substitute local/demo chats to conceal missing SQL.
+Read the task's final message for actual commit/push and live-application status.

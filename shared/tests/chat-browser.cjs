@@ -37,7 +37,9 @@ async function request(user,call){
 }
 (async()=>{
  db=new PGlite();await db.exec(`create role anon nologin;create role authenticated nologin;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema public,auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
- for(const file of fs.readdirSync(path.join(root,'shared/supabase/migrations')).filter(n=>n.endsWith('.sql')&&!n.startsWith('002')).sort())await db.exec(fs.readFileSync(path.join(root,'shared/supabase/migrations',file),'utf8'));
+ const setupBundle=process.env.WORKFLOW_SETUP_BUNDLE==='1';
+ for(const file of fs.readdirSync(path.join(root,'shared/supabase/migrations')).filter(n=>n.endsWith('.sql')&&!n.startsWith('002')&&(!setupBundle||!/^(007|008|009)_/.test(n))).sort())await db.exec(fs.readFileSync(path.join(root,'shared/supabase/migrations',file),'utf8'));
+ if(setupBundle)await db.exec(require('../scripts/build-workflow-setup.cjs').buildWorkflowSetup());
  // Supabase default table privileges provide this grant for migration 003.
  await db.exec('grant select on public.developer_accounts to authenticated');
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));base=`http://127.0.0.1:${server.address().port}/Community_Services/`;
