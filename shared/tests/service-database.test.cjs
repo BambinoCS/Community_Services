@@ -40,7 +40,7 @@ before(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;
   `);
-  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_request_help_fields.sql', '005_service_request_workflow.sql', '006_location_resource_problem.sql']) {
+  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_request_help_fields.sql', '005_service_request_workflow.sql', '006_location_resource_problem.sql', '007_assistant_management.sql', '008_item_handoffs_chat.sql', '009_admin_operations.sql']) {
     await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations', name), 'utf8'));
   }
   for (const id of Object.values(ids)) await db.query('insert into auth.users(id) values ($1)', [id]);
@@ -424,4 +424,257 @@ databaseTest('item creation remains allowed but cannot forge service lifecycle o
   await expectFailure(()=>db.query('select * from public.cancel_resource_request($1)',[row.id]),'P0001');
   const service=await create();
   await expectFailure(()=>db.query('select * from public.cancel_resource_request($1)',[service.id]),'42501');
+});
+
+
+databaseTest('assistant application derives ownership and retries without resetting status', async () => {
+  await asUser(ids.owner);
+  const first = (await db.query('select * from public.apply_to_be_assistant()')).rows[0];
+  assert.equal(first.user_id, ids.owner);
+  assert.equal(first.verification_status, 'pending');
+  assert.equal(first.training_status, 'not_started');
+  assert.equal(first.availability, 'unavailable');
+  assert.equal((await db.query('select * from public.apply_to_be_assistant()')).rows[0].id, first.id);
+  await trusted();
+  await db.query("update public.assistants set verification_status = 'suspended' where id=$1", [first.id]);
+  await asUser(ids.owner);
+  assert.equal((await db.query('select * from public.apply_to_be_assistant()')).rows[0].verification_status, 'suspended');
+});
+
+async function reviewAssistant(id, verification, training, beforeVerification='pending', beforeTraining='not_started', reason='Reviewed by project team') {
+  return (await db.query('select * from public.review_assistant($1,$2,$3,$4,$5,$6)',
+    [id,verification,training,beforeVerification,beforeTraining,reason])).rows[0];
+}
+
+databaseTest('only actual admins can review, even with developer membership', async () => {
+  const pending = (await db.query('select id from public.assistants where user_id=$1',[ids.pending])).rows[0].id;
+  await db.query('insert into public.developer_accounts(user_id) values ($1)',[ids.owner]);
+  for (const id of [ids.owner,ids.assistant,ids.pending]) {
+    await asUser(id);
+    await expectFailure(() => reviewAssistant(pending,'verified','completed'),'42501');
+  }
+  await asUser(ids.admin);
+  const updated = await reviewAssistant(pending,'verified','completed');
+  assert.equal(updated.verification_status,'verified');
+  assert.equal(updated.training_status,'completed');
+  const audit = (await db.query('select * from public.assistant_reviews')).rows;
+  assert.equal(audit.length,1);
+  assert.equal(audit[0].reviewer_id,ids.admin);
+  assert.equal(audit[0].previous_verification,'pending');
+  await asUser(ids.pending);
+  assert.equal((await db.query('select * from public.assistant_reviews')).rows.length,0);
+});
+
+databaseTest('review rejects stale or invalid decisions without changing status or audit', async () => {
+  const id=(await db.query('select id from public.assistants where user_id=$1',[ids.pending])).rows[0].id;
+  await asUser(ids.admin);
+  await expectFailure(() => reviewAssistant(id,'verified','completed','verified'),'40001');
+  await expectFailure(() => reviewAssistant(id,'unknown','completed'),'22023');
+  await expectFailure(() => reviewAssistant(id,'verified',null),'22023');
+  await expectFailure(() => reviewAssistant(id,'suspended','not_started','pending','not_started','  '),'22023');
+  assert.equal((await db.query('select count(*)::int as n from public.assistant_reviews')).rows[0].n,0);
+  assert.equal((await db.query('select verification_status from public.assistants where id=$1',[id])).rows[0].verification_status,'pending');
+});
+
+databaseTest('suspension clears availability and immediately blocks protected service work', async () => {
+  const id=(await db.query('select id from public.assistants where user_id=$1',[ids.assistant])).rows[0].id;
+  await asUser(ids.owner); const request=await create();
+  await asUser(ids.assistant); await rpc('accept',request.id);
+  await db.query("update public.assistants set availability='available' where id=$1",[id]);
+  await asUser(ids.admin);
+  assert.equal((await reviewAssistant(id,'suspended','completed','verified','completed','Review needed')).availability,'unavailable');
+  await asUser(ids.assistant);
+  await expectFailure(() => rpc('start',request.id),'42501');
+});
+
+databaseTest('assistant can edit only own availability and cannot self-verify or forge review history', async () => {
+  await asUser(ids.assistant);
+  const changed=await db.query("update public.assistants set availability='available' where user_id=$1 returning availability",[ids.assistant]);
+  assert.equal(changed.rows[0].availability,'available');
+  assert.equal((await db.query("update public.assistants set availability='available' where user_id=$1 returning id",[ids.secondAssistant])).rows.length,0);
+  await expectFailure(() => db.query("update public.assistants set verification_status='verified'"),'42501');
+  await expectFailure(() => db.query("insert into public.assistant_reviews(assistant_id,reviewer_id,previous_verification,verification_status,previous_training,training_status) select id,user_id,'pending','verified','not_started','completed' from public.assistants"),'42501');
+});
+
+databaseTest('anonymous and organisation accounts cannot submit assistant applications', async () => {
+  await asUser(ids.organisation);
+  await expectFailure(() => db.query('select public.apply_to_be_assistant()'),'42501');
+  await asUser(null);
+  await expectFailure(() => db.query('select public.apply_to_be_assistant()'),'42501');
+  await trusted(); await db.exec('set local role anon');
+  await expectFailure(() => db.query('select public.apply_to_be_assistant()'),'42501');
+});
+
+async function donatedItem(overrides={}) {
+  const row={donor:ids.owner,title:'Winter blankets',quantity:2,location:'Community hall',...overrides};
+  return (await db.query("insert into public.donations(donor_id,item_name,category,description,quantity,location) values($1,$2,'clothing','Clean blankets',$3,$4) returning *",[row.donor,row.title,row.quantity,row.location])).rows[0];
+}
+async function itemNeed() {
+  return (await db.query("insert into public.requests(user_id,request_type,category,item_name,description,quantity,location,status) values($1,'resource','clothing','Winter blankets','Need two blankets',2,'Recipient meeting place','open') returning *",[ids.stranger])).rows[0];
+}
+async function handoff(source,mode='self_collect',type='donation',address='',id=randomUUID()) {
+  return (await db.query('select * from public.start_item_handoff($1,$2,$3,$4,$5)',[id,type,source,mode,address])).rows[0];
+}
+async function chat(id,body,nonce=randomUUID()) {
+  return (await db.query('select * from public.send_chat_message($1,$2,$3)',[id,nonce,body])).rows[0];
+}
+async function finishHandoff(id,action) {
+  return (await db.query('select * from public.finish_item_handoff($1,$2)',[id,action])).rows[0];
+}
+
+databaseTest('self-collection reserves donation and opens a participant-only idempotent conversation',async()=>{
+  const donation=await donatedItem();await asUser(ids.stranger);
+  const nonce=randomUUID(),h=await handoff(donation.id,'self_collect','donation','',nonce);
+  assert.equal(h.donor_id,ids.owner);assert.equal(h.recipient_id,ids.stranger);assert.equal(h.status,'arranged');assert.equal(h.assistant_id,null);
+  assert.equal((await handoff(donation.id,'self_collect','donation','',nonce)).id,h.id);
+  const m=await chat(h.id,'Can I collect tomorrow?');
+  assert.equal(m.sender_id,ids.stranger);
+  await asUser(ids.owner);assert.equal((await db.query('select status from public.donations where id=$1',[donation.id])).rows[0].status,'reserved');
+  assert.equal((await db.query('select body from public.chat_messages')).rows[0].body,'Can I collect tomorrow?');
+  for(const other of [ids.assistant,ids.admin,ids.pending]){
+    await asUser(other);assert.equal((await db.query('select * from public.item_handoffs')).rows.length,0);
+    assert.equal((await db.query('select * from public.chat_messages')).rows.length,0);
+    await expectFailure(()=>chat(h.id,'intrusion'),'42501');
+    await expectFailure(()=>db.query('select * from public.item_handoff_participants($1)',[h.id]),'42501');
+  }
+});
+
+databaseTest('donating a requested item derives the requester and supports direct delivery and cancellation',async()=>{
+  const request=await itemNeed();await asUser(ids.owner);
+  const h=await handoff(request.id,'self_deliver','request','Donor collection place');
+  assert.equal(h.recipient_id,ids.stranger);assert.equal(h.donor_id,ids.owner);
+  assert.equal(h.delivery_location,'Recipient meeting place');assert.equal(h.pickup_location,'Donor collection place');
+  await chat(h.id,'I can deliver this afternoon.');
+  await asUser(ids.stranger);assert.equal((await db.query('select status from public.requests where id=$1',[request.id])).rows[0].status,'assigned');
+  await finishHandoff(h.id,'cancelled');
+  assert.equal((await db.query('select status from public.requests where id=$1',[request.id])).rows[0].status,'open');
+  await expectFailure(()=>chat(h.id,'closed'),'P0001');
+});
+
+databaseTest('assistance matches an available trained verified assistant and includes only that helper in chat',async()=>{
+  const donation=await donatedItem();
+  await db.query("update public.assistants set availability='available' where user_id=$1",[ids.assistant]);
+  await asUser(ids.stranger);const h=await handoff(donation.id,'assistance','donation','Recipient address');
+  assert.equal(h.status,'arranged');assert.ok(h.assistant_id);
+  await asUser(ids.assistant);assert.equal((await db.query('select id from public.item_handoffs')).rows[0].id,h.id);
+  await chat(h.id,'I can help with collection.');
+  await expectFailure(()=>finishHandoff(h.id,'completed'),'42501');
+  await asUser(ids.owner);await expectFailure(()=>finishHandoff(h.id,'completed'),'42501');
+  await asUser(ids.stranger);await finishHandoff(h.id,'completed');
+  await trusted();assert.equal((await db.query('select status from public.donations where id=$1',[donation.id])).rows[0].status,'collected');
+});
+
+databaseTest('unavailable assistants leave a waiting delivery; an available assistant can claim it once',async()=>{
+  const request=await itemNeed();await asUser(ids.owner);
+  const h=await handoff(request.id,'assistance','request','Donor address');assert.equal(h.status,'waiting_assistant');
+  await expectFailure(()=>finishHandoff(h.id,'completed'),'42501');
+  await asUser(ids.assistant);await expectFailure(()=>db.query('select * from public.waiting_item_deliveries()'),'42501');
+  await db.query("update public.assistants set availability='available' where user_id=$1",[ids.assistant]);
+  const queue=(await db.query('select * from public.waiting_item_deliveries()')).rows;
+  assert.deepEqual(Object.keys(queue[0]).sort(),['created_at','id','quantity','title']);
+  assert.equal(queue[0].id,h.id);assert.equal((await db.query('select * from public.item_handoffs')).rows.length,0);
+  const claimed=(await db.query('select * from public.claim_item_delivery($1)',[h.id])).rows[0];assert.equal(claimed.status,'arranged');
+  await asUser(ids.secondAssistant);await db.query("update public.assistants set availability='available' where user_id=$1",[ids.secondAssistant]);
+  await expectFailure(()=>db.query('select * from public.claim_item_delivery($1)',[h.id]),'P0001');
+  await asUser(ids.stranger);await finishHandoff(h.id,'completed');
+  assert.equal((await db.query('select status from public.requests where id=$1',[request.id])).rows[0].status,'completed');
+});
+
+databaseTest('matching excludes untrained, suspended, busy and participating assistants',async()=>{
+  const first=await donatedItem();const second=await donatedItem();
+  await db.query("update public.assistants set availability='available'");
+  await db.query("update public.assistants set verification_status='suspended' where user_id=$1",[ids.secondAssistant]);
+  await asUser(ids.stranger);const h=await handoff(first.id,'assistance','donation','Meeting place');assert.ok(h.assistant_id);
+  const waiting=await handoff(second.id,'assistance','donation','Meeting place');assert.equal(waiting.status,'waiting_assistant');
+  await asUser(ids.assistant);await expectFailure(()=>db.query('select * from public.claim_item_delivery($1)',[waiting.id]),'P0001');
+  await asUser(ids.pending);await expectFailure(()=>db.query('select * from public.claim_item_delivery($1)',[waiting.id]),'42501');
+  await asUser(ids.secondAssistant);await expectFailure(()=>db.query('select * from public.claim_item_delivery($1)',[waiting.id]),'42501');
+  await trusted();const ownDonation=await donatedItem({donor:ids.assistant});
+  await asUser(ids.stranger);const own=await handoff(ownDonation.id,'assistance','donation','Meeting place');assert.equal(own.assistant_id,null);
+});
+
+databaseTest('active service jobs prevent automatic delivery matching',async()=>{
+  const donation=await donatedItem();await asUser(ids.owner);const service=await create();
+  await asUser(ids.assistant);await rpc('accept',service.id);
+  await db.query("update public.assistants set availability='available' where user_id=$1",[ids.assistant]);
+  await asUser(ids.stranger);assert.equal((await handoff(donation.id,'assistance','donation','Address')).status,'waiting_assistant');
+});
+
+databaseTest('competing item requests cannot double reserve and cancellation safely reopens the source',async()=>{
+  const donation=await donatedItem();await asUser(ids.stranger);const h=await handoff(donation.id);
+  await asUser(ids.organisation);await expectFailure(()=>handoff(donation.id),'P0001');
+  await asUser(ids.owner);await expectFailure(()=>db.query("update public.donations set status='available' where id=$1",[donation.id]),'42501');
+  await finishHandoff(h.id,'cancelled');assert.equal((await db.query('select status from public.donations where id=$1',[donation.id])).rows[0].status,'available');
+  await asUser(ids.organisation);assert.equal((await handoff(donation.id)).status,'arranged');
+});
+
+databaseTest('chat retries are exactly once, body is validated and direct writes are forbidden',async()=>{
+  const donation=await donatedItem();await asUser(ids.stranger);const h=await handoff(donation.id);const nonce=randomUUID();
+  const first=await chat(h.id,'  Hello neighbour  ',nonce);assert.equal(first.body,'Hello neighbour');
+  assert.equal((await chat(h.id,'Hello neighbour',nonce)).id,first.id);
+  await expectFailure(()=>chat(h.id,'changed',nonce),'22023');
+  await expectFailure(()=>chat(h.id,'  '),'22023');await expectFailure(()=>chat(h.id,'x'.repeat(2001)),'22023');
+  await expectFailure(()=>db.query("update public.item_handoffs set status='completed'"),'42501');
+  await expectFailure(()=>db.query("update public.chat_messages set body='tampered'"),'42501');
+  await expectFailure(()=>db.query("delete from public.chat_messages"),'42501');
+  assert.equal((await db.query('select * from public.chat_messages')).rows.length,1);
+  await asUser(ids.owner);await expectFailure(()=>chat(h.id,'Hello neighbour',nonce),'22023');
+});
+
+databaseTest('revoked helper loses chat access while donor and recipient retain their history',async()=>{
+  const donation=await donatedItem();await db.query("update public.assistants set availability='available' where user_id=$1",[ids.assistant]);
+  await asUser(ids.stranger);const h=await handoff(donation.id,'assistance','donation','Recipient address');await chat(h.id,'Hello');
+  await trusted();await db.query("update public.assistants set verification_status='suspended' where user_id=$1",[ids.assistant]);
+  await asUser(ids.assistant);assert.equal((await db.query('select * from public.chat_messages')).rows.length,0);await expectFailure(()=>chat(h.id,'hello'),'42501');
+  await asUser(ids.stranger);assert.equal((await db.query('select * from public.chat_messages')).rows.length,1);await finishHandoff(h.id,'cancelled');
+});
+
+databaseTest('handoff rejects self-arrangements, invalid modes, missing locations and anonymous users',async()=>{
+  const donation=await donatedItem();await asUser(ids.owner);await expectFailure(()=>handoff(donation.id),'42501');
+  await asUser(ids.stranger);await expectFailure(()=>handoff(donation.id,'self_deliver'),'22023');
+  await expectFailure(()=>handoff(donation.id,'assistance'),'22023');await expectFailure(()=>handoff(donation.id,'assistance','donation','x'.repeat(501)),'22023');
+  await asUser(null);await expectFailure(()=>handoff(donation.id),'42501');
+  await trusted();await db.exec('set local role anon');await expectFailure(()=>handoff(donation.id),'42501');
+});
+
+async function adminList(kind,filters={},search='',offset=0){return (await db.query('select public.admin_list_records($1,$2,$3,$4) as data',[kind,offset,filters,search])).rows[0].data;}
+async function moderate(kind,id,note='Reviewed by administrator'){return db.query('select public.admin_moderate_record($1,$2,$3)',[kind,id,note]);}
+
+databaseTest('admin lists and totals reject ordinary users and developer-only membership',async()=>{
+  await db.query('insert into public.developer_accounts(user_id) values($1)',[ids.owner]);
+  for(const id of [ids.owner,ids.assistant,ids.organisation]){await asUser(id);await expectFailure(()=>adminList('users'),'42501');await expectFailure(()=>db.query('select public.admin_overview()'),'42501');await expectFailure(()=>moderate('report',randomUUID()),'42501');}
+  await asUser(ids.admin);const rows=await adminList('users');assert.equal(rows.length,7);assert.ok(rows.every(row=>!('phone' in row)&&!('avatar_path' in row)));
+});
+
+databaseTest('admin counts real eligible assistants and current donation availability',async()=>{
+  await donatedItem();const expired=await donatedItem();await db.query("update public.donations set available_until=now()-interval '1 day' where id=$1",[expired.id]);
+  await asUser(ids.admin);const stats=(await db.query('select public.admin_overview() as data')).rows[0].data;
+  assert.equal(stats.users,7);assert.equal(stats.verified_assistants,2);assert.equal(stats.pending_assistants,1);assert.equal(stats.available_donations,1);
+  assert.equal((await adminList('users',{role:'assistant'})).length,3);
+});
+
+databaseTest('admin cancellation is audited and cannot cancel assigned work or reserved items',async()=>{
+  const donation=await donatedItem();await asUser(ids.owner);const open=await create(),assigned=await create();
+  await asUser(ids.assistant);await rpc('accept',assigned.id);
+  await asUser(ids.stranger);await handoff(donation.id);
+  await asUser(ids.admin);await moderate('request',open.id);
+  assert.equal((await db.query('select status from public.requests where id=$1',[open.id])).rows[0].status,'cancelled');
+  await expectFailure(()=>moderate('request',assigned.id),'P0001');await expectFailure(()=>moderate('donation',donation.id),'P0001');
+  assert.equal((await db.query('select count(*)::int as n from public.admin_actions')).rows[0].n,1);
+});
+
+databaseTest('report review persists a private note without claiming the issue is resolved',async()=>{
+  const report=(await db.query("insert into public.reports(user_id,category,description) values($1,'community_issue','Damaged pavement') returning id",[ids.owner])).rows[0].id;
+  await asUser(ids.admin);await expectFailure(()=>moderate('report',report,'  '),'22023');await moderate('report',report,'Raised with the maintenance team');
+  const rows=await adminList('reports',{review:'reviewed'});assert.equal(rows.length,1);assert.equal(rows[0].status,'open');assert.equal(rows[0].review_note,'Raised with the maintenance team');
+  assert.equal((await adminList('reports',{review:'unreviewed'})).length,0);
+  await asUser(ids.owner);assert.equal((await db.query('select * from public.admin_report_reviews')).rows.length,0);assert.equal((await db.query('select * from public.admin_actions')).rows.length,0);
+  await expectFailure(()=>db.query("update public.admin_report_reviews set note='fake'"),'42501');
+});
+
+databaseTest('admin donation cancellation and server-side search preserve unrelated records',async()=>{
+  const first=await donatedItem(),second=await donatedItem();await db.query("update public.profiles set first_name='Naledi' where id=$1",[ids.owner]);
+  await asUser(ids.admin);await moderate('donation',first.id,'Listing is no longer available');
+  assert.equal((await adminList('donations',{status:'cancelled'})).length,1);assert.equal((await adminList('donations',{status:'available'}))[0].id,second.id);
+  assert.equal((await adminList('users',{},'naledi'))[0].id,ids.owner);assert.equal((await adminList('users',{},"' OR 1=1 --")).length,0);
 });

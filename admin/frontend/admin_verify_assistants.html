@@ -324,8 +324,22 @@
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
-  <script defer src="../../shared/frontend/auth-guard.js"></script>
-</head>
+  <script defer src="../../shared/frontend/assistant-api.js"></script>
+<script defer src="../../shared/frontend/auth-guard.js"></script>
+<style>
+#review-dialog { margin:auto; width:min(560px,calc(100% - 32px)); max-height:90vh; overflow:auto; border:1px solid #dbe6e1; border-radius:20px; padding:28px; color:#183c35; }
+#review-dialog::backdrop { background:#102b26aa; } #review-dialog fieldset { border:0; padding:0; margin:0; } #review-dialog label { margin-top:16px; } #review-dialog p { margin:12px 0; } .review-pagination { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin:20px 0; } #review-message { margin:16px 0; } #emptyStateContainer { padding:20px; } .table-wrap td { overflow-wrap:anywhere; max-width:260px; } .auth-account { flex-wrap:wrap; }
+</style><style>
+@media(max-width:640px) {
+  .table-wrap { overflow:visible; background:transparent; box-shadow:none; }
+  table.data-table,table.data-table tbody,table.data-table tr,table.data-table td { display:block; width:100%; }
+  table.data-table thead { display:none; }
+  table.data-table tr { padding:16px; background:white; border:1px solid #e5e7eb; border-radius:16px; margin-bottom:12px; }
+  table.data-table td, .table-wrap td:first-child { max-width:none; padding:10px 0; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+  table.data-table td::before { content:attr(data-label); color:#6b7280; font-size:.8rem; flex-shrink:0; }
+  table.data-table td:last-child { border:0; } table.data-table button { white-space:nowrap; }
+}
+</style></head>
 
 <body data-auth-area="admin">
 <section id="auth-shell" class="auth-shell"><p role="status">Checking your account…</p><button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button><noscript><p>JavaScript is required to sign in and verify access.</p></noscript></section>
@@ -336,7 +350,7 @@
   </header>
   <nav class="app-nav">
     <a href="admin_dashboard.html">Dashboard</a>
-    <a href="admin_verify_assistants.html">Verify Assistants</a>
+    <a href="admin_verify_assistants.html" aria-current="page" class="active">Verify Assistants</a>
     <a href="admin_users.html">Users</a>
     <a href="admin_requests.html">Requests</a>
     <a href="admin_donations.html">Donations</a>
@@ -346,7 +360,7 @@
   <main>
     <section class="page-heading">
       <h1>Verify Assistants</h1>
-      <p>Review and act on assistant verification applications.</p>
+      <p>Review assistant applications, record training completion, and manage verification. Only approve checks your team has actually completed.</p>
     </section>
 
     <div class="filters-bar">
@@ -362,7 +376,8 @@
       </div>
     </div>
 
-    <div class="table-wrap">
+    <p id="review-message" role="status" aria-live="polite"></p><button type="button" class="btn btn-secondary" id="refresh-assistants">Refresh</button>
+<div class="table-wrap" style="margin-top:16px">
       <table class="data-table">
         <thead>
           <tr>
@@ -377,7 +392,13 @@
       </table>
       <div id="emptyStateContainer"></div>
     </div>
-  </main>
+  <div class="review-pagination"><button type="button" class="btn btn-secondary" id="previous-assistants" disabled>Previous</button><span id="assistant-page">Page 1</span><button type="button" class="btn btn-secondary" id="next-assistants" disabled>Next</button></div>
+<dialog id="review-dialog" aria-labelledby="review-title"><h2 id="review-title">Review assistant</h2><p id="review-name"></p>
+<form id="review-form"><fieldset><label for="review-verification">Verification</label><select name="verification" id="review-verification"><option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option></select>
+<label for="review-training">Training</label><select name="training" id="review-training"><option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="completed">Completed</option></select>
+<label for="review-reason">Review note</label><textarea name="reason" id="review-reason" maxlength="1000" aria-describedby="review-hint"></textarea><p class="hint" id="review-hint">Required for rejection or suspension. Record the reason without including sensitive identity documents. Reviews are retained for administrators.</p>
+<p class="hint">Changing eligibility can prevent an assistant from starting or completing existing jobs. Arrange a handover with the project team when necessary.</p>
+<div class="review-pagination"><button type="submit" class="btn btn-primary">Save review</button><button type="button" class="btn btn-secondary" id="close-review">Cancel</button></div></fieldset><p id="dialog-message" role="status"></p></form></dialog></main>
 
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>

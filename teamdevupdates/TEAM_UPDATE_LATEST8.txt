@@ -1,0 +1,117 @@
+COMMUNITY SERVICES - DONATION CHAT, ASSISTANCE AND ADMIN COMPLETION
+Date: 2026-09-30
+Member: Codex
+Current handoff: TEAM_UPDATE_LATEST8.txt (continues update 7).
+
+USER REQUESTS
+Add chat for people requesting donated items and donors offering requested items.
+Allow self collection/delivery or assistance from an available assistant.
+Complete the remaining admin work, commit and push to the configured Git remote.
+
+COMPLETED FLOWS
+1. Search available donations -> Request this item -> collect myself OR assistance.
+2. Browse Requests -> Donate This Item -> deliver myself OR assistance.
+3. Each path opens a saved private conversation for the actual donor and recipient.
+   Assistance includes a matched eligible helper, or waits for an available helper.
+4. Donor/recipient can cancel; only recipient can confirm receipt. Source statuses
+   and arrangement status change atomically. Closed conversations retain history.
+5. Assistant dashboard and authenticated account bars link to Messages & deliveries.
+6. Admin dashboard/users/requests/donations/reports now use real data and counts,
+   server-side filters/search, pagination, accessible details and mobile layouts.
+   Admin cancellation and report reviews require notes and retain audit records.
+
+FILES CREATED
+chat.html
+shared/frontend/item-chat.js
+shared/frontend/chat-page.js
+shared/frontend/admin-api.js
+shared/frontend/admin-page.js
+shared/supabase/migrations/008_item_handoffs_chat.sql
+shared/supabase/migrations/009_admin_operations.sql
+shared/tests/chat-browser.cjs
+teamdevupdates/TEAM_UPDATE_LATEST8.txt
+
+FILES UPDATED IN THIS FOLLOW-UP
+community-user/frontend/community-user_dashboard.js
+community-user/frontend/community-user_browse-requests.js
+verified-assistant/frontend/verified-assistant_dashboard.html
+shared/frontend/auth-guard.js
+admin/frontend/admin_dashboard.html and .js
+admin/frontend/admin_users.html and .js
+admin/frontend/admin_requests.html and .js
+admin/frontend/admin_donations.html and .js
+admin/frontend/admin_reports.html and .js
+shared/tests/auth-browser.cjs (explicit offline option)
+shared/tests/check-auth-static.cjs
+shared/tests/service-browser.cjs
+shared/tests/service-database.test.cjs
+README.md
+Update 7 changes remain included in the same pending delivery.
+
+MIGRATION 008 / CONTRACT
+item_handoffs: one active arrangement for a donation or item request, with real
+participants, full quantity, collection/delivery addresses and transport mode.
+Modes: self_collect, self_deliver, assistance.
+States: waiting_assistant, arranged, completed, cancelled.
+chat_messages: server-derived sender, validated text, unique client retry ID.
+RPCs: start_item_handoff, item_handoff_participants, waiting_item_deliveries,
+claim_item_delivery, finish_item_handoff, send_chat_message.
+RLS: only donor, recipient and assigned still-eligible helper can read a chat.
+An unrelated admin or developer cannot read private conversations.
+Assistant matching requires available + verified + training completed, excludes
+participants, checks active service/delivery work, and locks the chosen assistant.
+No free helper means a waiting delivery. The waiting queue exposes item/quantity,
+not names or addresses; accepting grants access to its conversation.
+Reserved donation owners cannot bypass the arrangement to edit/relist an item.
+Creation, reservations and message sends use UUID retries and transactional SQL.
+Chat history loads 50 messages at a time. Visible-page polling runs every 10 seconds.
+Drafts/nonce fallback survive connection errors, including in-memory fallback when
+sessionStorage is unavailable (reload persistence then requires browser storage).
+
+MIGRATION 009 / CONTRACT
+RPCs: admin_overview, admin_list_records, admin_moderate_record.
+All require the actual database admin role; Developer Mode cannot grant access.
+Lists are paged in 50-row batches with server-side filters and literal name search.
+User lists omit email, phone, avatar paths and credentials.
+Moderation: cancel only open unassigned requests or available unreserved donations.
+Report reviews store private notes/reviewer/time separately, without changing the
+report's existing status or inventing a resolution. Admin-only audit tables retain
+moderation history. No direct browser writes to these new administrative tables.
+
+VERIFICATION
+PASS: 10 authentication unit tests.
+PASS: 27 offline authentication browser scenarios.
+SKIP: 2 real SDK callback scenarios in the latest run: downloading the public SDK
+requires network access; automatic approval review failed due to account usage limit.
+PASS: 24 service browser scenarios, including changed donation/request chat links.
+PASS: 44 real SQL/RLS tests, including chat privacy, matching, competing reservations,
+retry identity, cancellation/receipt, audit, admin restrictions and report review.
+PASS: 10 browser integration scenarios backed by those real SQL migrations in PGlite.
+PASS: 66 JS/CJS syntax checks and 31 HTML pages, with zero missing file references.
+PASS: request-help-static.cjs; git diff --check.
+Total latest pass count: 115 tests/scenarios plus static checks; 2 explicitly skipped.
+Inspected chat desktop/mobile and admin donations mobile screenshots in test-results.
+No real accounts or live user data were used. PGlite serializes database connections.
+
+DEPLOYMENT AND GIT
+Actual repository: Community_Services/ (not the older parent Git skeleton).
+Remote: origin -> https://github.com/BambinoCS/Community_Services.git, branch main.
+User requested local repository author: BambinoCS <bambinocs26@gmail.com>.
+Commit/push are authorized; inspect the final task result for their actual outcome.
+The initial remote fetch could not connect to GitHub from the restricted environment.
+No force push. Reconcile remote changes if a later normal push is rejected.
+Apply migrations 007, 008 and 009 after existing 001-006 in trusted Supabase tooling.
+Git push does NOT execute SQL. No live migration or deployment verification done here.
+No new production packages, secrets, environment variables or Storage buckets.
+
+KNOWN LIMITS / NEXT RELEASE CHECKS
+- Full listing/request quantities only; no partial inventory allocation.
+- Availability-based matching, not distance, schedules or travel-time matching.
+- Text chat only; no attachments, push notifications, typing/read receipts or chat search.
+- A suspended helper loses chat access. Participants can cancel/restart if still needed;
+  automatic reassignment and in-progress admin cancellation are not implemented.
+- Online lessons/module tracking and verification-document upload still need actual
+  team content and verification processes; administrators record completed checks.
+- Live Supabase/PostgREST integration, real concurrent transactions, email/Storage
+  permissions and deployed mobile navigation still need live-account verification.
+- Prior profile orphan-image cleanup remains a separate maintenance task.

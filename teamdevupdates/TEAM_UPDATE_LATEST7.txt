@@ -1,0 +1,114 @@
+COMMUNITY SERVICES - VERIFIED ASSISTANT WORKSPACE COMPLETION
+Date: 2026-09-29
+Member: Codex
+Feature: Assistant application, account, dashboard, availability and admin review
+Supersedes: TEAM_UPDATE_LATEST6.txt for current status; historical notes preserved.
+
+REPOSITORY CONTEXT
+The working site and its actual Git repository are inside Community_Services/.
+The outer community-service-platform folder also has an older Git skeleton. Do
+not interpret its pre-existing deleted role folders as deletions from this task.
+The inner repository started clean at 4f132d1. No commit, push, live migration or
+website deployment was performed by this task. Run Git from Community_Services/.
+
+PROBLEMS FOUND
+- All current HTML references resolved, but some linked scripts were placeholders.
+- Assistant Profile only logged input and displayed a misleading success message.
+- Training showed fabricated not-started module progress instead of account state.
+- Dashboard only had links, and availability was read-only.
+- admin_verify_assistants.js contained copied Users-page code and referenced DOM
+  elements absent from Verify Assistants, causing runtime failure.
+- The reusable Browse Requests API called an absent RPC, although the actual
+  browse page had already switched to migration 006's resource read policy.
+
+FEATURES COMPLETED
+- Shared assistant API for availability, applications, admin listing and reviews.
+- Account Profile: apply once to become an assistant; see verification/training.
+  Retrying cannot reset an existing suspended/rejected/verified application.
+- Assistant Profile: real names, optional phone, email display and avatar upload,
+  replacement/removal using the existing shared profile controller and Storage.
+  Removed the unsaved service-categories selector rather than claiming to save it.
+- Training: real overall training/verification status and next steps. Pending users
+  can reach their account/profile/training screens; protected job guards remain.
+- Dashboard: actual available, active and completed previews; 0..49 / 50+ counts;
+  refresh and independently recoverable list errors; saved availability preference.
+- Consistent assistant page styling, all navigation visible on mobile, current-page
+  indicators, skip links and responsive grids. CSS remains inside HTML.
+- Verify Assistants: real queue, server-filtered status, 50-record pagination,
+  accessible review dialog, verification/training updates, stale-review feedback,
+  required reasons for rejection/suspension, mobile card layout and safe text.
+- Removed missing-file allowlist exceptions from the static checker.
+- Repaired reusable browseResourceRequests to use the existing RLS-backed query.
+
+FILES CREATED
+shared/frontend/assistant-api.js
+shared/frontend/assistant-membership.js
+shared/supabase/migrations/007_assistant_management.sql
+teamdevupdates/TEAM_UPDATE_LATEST7.txt
+
+FILES MODIFIED
+profile.html
+admin/frontend/admin_verify_assistants.html and .js
+community-user/frontend/community-api.js
+verified-assistant/frontend/verified-assistant_dashboard.html and .js
+verified-assistant/frontend/verified-assistant_profile.html and .js
+verified-assistant/frontend/verified-assistant_training.html and .js
+verified-assistant/frontend/verified-assistant_available-requests.html
+verified-assistant/frontend/verified-assistant_active-jobs.html
+verified-assistant/frontend/verified-assistant_completed-jobs.html
+shared/tests/check-auth-static.cjs
+shared/tests/service-browser.cjs
+shared/tests/service-database.test.cjs
+README.md
+
+DATABASE / API CONTRACTS
+Migration 007 follows 001-006; apply through the trusted Supabase migration process.
+New RPC apply_to_be_assistant(): no parameters; derives auth.uid(); community_user
+or assistant roles only; creates default pending/not_started/unavailable record or
+returns the existing row. Profile role is unchanged, preserving community features.
+New RPC review_assistant(p_assistant_id uuid, p_verification text, p_training text,
+p_expected_verification text, p_expected_training text, p_reason text default '').
+Real database admin role required; validates statuses/reason, locks the row and
+rejects stale statuses with 40001. Returns the saved assistant row and appends an
+assistant_reviews audit row. Audit SELECT is admin-only; browser writes are denied.
+Revoked eligibility clears availability. Existing status values are unchanged.
+Availability uses the existing own-row RLS and availability-only UPDATE privilege.
+It does not grant access to jobs or automatically cancel/reassign existing work.
+Developer Mode never changes database permissions. No new Express routes required.
+No new Storage buckets or environment variables. Existing avatars behavior remains.
+
+VERIFICATION
+PASS: auth.test.cjs - 10 policy/account tests.
+PASS: auth-browser.cjs - 29 scenarios, including 2 real pinned SDK/mock HTTP cases.
+PASS: service-browser.cjs - 24 scenarios, including 5 new assistant/admin workflows.
+PASS: service-database.test.cjs - 29 tests executing real SQL in disposable PGlite,
+including 6 new application, permission, review, audit, stale-write and suspension tests.
+PASS: check-auth-static.cjs - 61 JS/CJS files and 30 HTML pages, no missing references.
+PASS: request-help-static.cjs and git diff --check.
+Total: 92 automated tests/scenarios, plus static checks.
+Inspected desktop/mobile dashboard, mobile profile and mobile admin review captures
+under ignored test-results/. Mobile admin table was improved after visual review.
+
+DEPENDENCIES
+No production dependencies added. Tests use bundled Playwright/Edge and temporary
+@electric-sql/pglite 0.5.8 under ignored test-results/sql-runtime/. Set
+SERVICE_TEST_PGLITE to that package's absolute path (or install outside the repo).
+Browser traffic and accounts are mocked; PGlite does not test concurrent PostgreSQL
+connections. No live user data was read or changed.
+
+RELEASE / REMAINING WORK
+1. Apply missing migrations in order through 007 to the actual Supabase project.
+2. Deploy the updated static site from this inner repository.
+3. Test separate real community, assistant, admin and developer accounts: apply,
+   review, login routing, saved availability/profile/avatars and complete service flow.
+   Check actual PostgREST nested profile reads, RLS, concurrent reviews and revocation.
+4. Online lessons/module tracking and verification-document submissions are not
+   implemented. Administrators record completion only after real team checks.
+5. Other admin pages (metrics/users/requests/donations/reports), realtime alerts,
+   service-category preferences and reassignment workflows remain future work.
+   Coordinate handover manually if suspending someone with active jobs.
+6. Prior live email, deployed routing, Storage RLS and profile orphan-image cleanup
+   checks still apply. No new external certification or emergency claims were added.
+
+Suggested commit after team review: Complete assistant workspace and secure reviews.
+Preserve the user-role folders, existing filenames, Supabase setup and inline CSS.

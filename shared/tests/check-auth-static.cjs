@@ -3,22 +3,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const root = path.resolve(__dirname, '../..');
-const legacyMissing = new Set([
-  'community-user/frontend/commubity_user_requests.html:community-user_requests.js',
-  'community-user/frontend/community-user_request-help.html:community-user_request-help.js',
-  'community-user/frontend/community_user_browse_requests.html:community-user_browse-requests.js',
-  'verified-assistant/frontend/verified_assistants_complefed_jobs.html:verified-assistant_completed-jobs.js',
-  'verified-assistant/frontend/verified-assistant_active-jobs.html:verified-assistant_active-jobs.js',
-  'verified-assistant/frontend/verified-assistant_profile.html:../../shared/frontend/validation.js',
-  'verified-assistant/frontend/verified-assistant_profile.html:verified-assistant_profile.js',
-  'verified-assistant/frontend/verigied_assistant_training.html:verified-assistant_training.js',
-  'admin/frontend/admin_dashboard.html:admin_dashboard.js',
-  'admin/frontend/admin_donations.html:admin_donations.js',
-  'admin/frontend/admin_reports.html:admin_reports.js',
-  'admin/frontend/admin_requests.html:admin_requests.js',
-  'admin/frontend/admin_users.html:admin_users.js',
-  'admin/frontend/admin_verify_assistants.html:admin_verify-assistants.js'
-]);
+const legacyMissing = new Set(); // All missing-file exceptions have been retired.
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e =>
     ['.git', 'node_modules', 'test-results', 'teamdevupdates'].includes(e.name) ? [] :
@@ -44,7 +29,7 @@ for (const file of walk(root)) {
       knownMissing.push(key);
     }
   }
-  if (/^(community-user|verified-assistant|admin)\/frontend\//.test(rel) || ['developer.html', 'profile.html'].includes(rel)) {
+  if (/^(community-user|verified-assistant|admin)\/frontend\//.test(rel) || ['developer.html', 'profile.html', 'chat.html'].includes(rel)) {
     assert.match(source, /id="protected-content" hidden/);
     assert.match(source, /data-auth-area=/);
     assert.equal(sources.filter(s => s.endsWith('/auth-guard.js')).length, 1);

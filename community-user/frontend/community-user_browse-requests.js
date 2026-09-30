@@ -52,7 +52,7 @@
       card.className = 'item-card';
       const top = document.createElement('div');
       top.className = 'item-card-top';
-      top.append(textElement('h3', ServiceRequests.categoryLabel('resource', row.category)));
+      top.append(textElement('h3', row.item_name || ServiceRequests.categoryLabel('resource', row.category)));
       top.append(textElement('span', 'Open', 'badge badge-open'));
       card.append(top);
       card.append(textElement('p', row.description, 'meta'));
@@ -72,7 +72,7 @@
         card.append(link);
       }
       const donate = document.createElement('a');
-      donate.href = 'community-user_donate.html';
+      donate.href = AppNavigation.url('chat.html') + '?request=' + encodeURIComponent(row.id);
       donate.className = 'btn btn-primary btn-sm';
       donate.textContent = 'Donate This Item';
       card.append(donate);
@@ -91,7 +91,7 @@
       if (!state) throw new Error('Please sign in to continue.');
       const db = CommunityAuth.getClient();
       const { data, error } = await db.from('requests')
-        .select('id,category,description,quantity,location,latitude,longitude,urgency,additional_info,status,created_at')
+        .select('id,item_name,category,description,quantity,location,latitude,longitude,urgency,additional_info,status,created_at')
         .eq('request_type', 'resource')
         .eq('status', 'open')
         .order('created_at', { ascending: false })

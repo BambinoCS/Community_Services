@@ -324,21 +324,58 @@
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
-  <script defer src="verified-assistant_dashboard.js"></script>
+  <script defer src="../../shared/frontend/assistant-api.js"></script>
+<script defer src="../../shared/frontend/service-requests.js"></script>
+<script defer src="verified-assistant_dashboard.js"></script>
   <script defer src="../../shared/frontend/auth-guard.js"></script>
 <style>.item-card { overflow-wrap:anywhere; } .actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center; } #service-message { margin:16px 0; }</style>
-</head>
+<style>
+/* Assistant workspace: responsive layout, readable status, consistent navigation. */
+:root { --bg:#f3f7f6; --text:#183c35; --muted:#536c65; --dark:#17664f; --dark-hover:#104d3b; --border:#dbe6e1; --shadow:0 6px 24px #173d3510; }
+body { font-family:'Segoe UI',Arial,sans-serif; line-height:1.5; }
+main { max-width:1180px; }
+.app-header h1 { letter-spacing:-.025em; }
+nav.app-nav { scrollbar-width:thin; }
+nav.app-nav a[aria-current="page"] { color:var(--dark); border-bottom-color:var(--dark); background:#edf6f1; }
+.card,.stat-card { border:1px solid var(--border); }
+.grid,.grid-2 { grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); }
+.welcome.card { background:linear-gradient(115deg,#124d3b,#23785a); color:#fff; padding:36px; margin-bottom:28px; }
+.welcome h2 { font-size:clamp(1.8rem,4vw,2.7rem); letter-spacing:-.035em; }
+.welcome p { max-width:690px; color:#e2f1e9; margin-top:10px; }
+.eyebrow { font-size:.72rem; font-weight:700; letter-spacing:.12em; margin-bottom:10px; }
+.dashboard-toolbar,.section-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:26px 0 16px; flex-wrap:wrap; }
+.section-heading h2,.dashboard-toolbar h2 { font-size:1.2rem; }
+.section-heading a { font-weight:600; }
+.stat-card { text-decoration:none; display:flex; flex-direction:column; transition:border-color .15s; }
+.stat-card:hover { border-color:var(--dark); }
+.stat-card .stat-value { font-size:2.3rem; color:var(--dark); }
+.job-description { margin:12px 0; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.item-card { min-width:0; overflow-wrap:anywhere; }
+#availability-toggle { margin:12px 0; }
+#availability-toggle[aria-pressed="true"] { background:#d9f1e3; color:#14532d; }
+#availability-message { font-size:.9rem; margin-top:10px; }
+.status-explanation { margin-top:16px; color:var(--muted); }
+.guidance { margin-top:24px; }
+.guidance p,.guidance ol { margin:16px 0; }
+.guidance ol { padding-left:24px; }
+.guidance li { padding:6px; }
+.skip-link { position:absolute; top:-100px; left:16px; z-index:200; padding:12px; background:#fff; color:#124d3b; }
+.skip-link:focus { top:12px; }
+@media(max-width:640px) { .welcome.card { padding:24px; } .stat-grid { grid-template-columns:1fr; } .stat-card { flex-direction:row; align-items:center; gap:20px; } .auth-account { flex-wrap:wrap; padding:12px 16px; } .header-right { flex-wrap:wrap; } }
+</style>
+<style>@media(max-width:640px) { nav.app-nav { flex-wrap:wrap; gap:0; } nav.app-nav a { flex:1 0 30%; display:flex; align-items:center; justify-content:center; white-space:normal; text-align:center; font-size:.8rem; padding:12px 6px; } }</style></head>
 
 <body data-auth-area="assistant">
 <section id="auth-shell" class="auth-shell"><p role="status">Checking your account…</p><button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button><noscript><p>JavaScript is required to sign in and verify access.</p></noscript></section>
 <div id="protected-content" hidden>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <div class="auth-account"><span data-auth-name></span><button type="button" data-auth-logout>Sign out</button></div>
   <header class="app-header">
     <h1>Community Service Platform</h1>
     <div class="header-right"><span class="user-type">Verified Assistant</span></div>
   </header>
-  <nav class="app-nav">
-    <a href="verified-assistant_dashboard.html">Dashboard</a>
+  <nav class="app-nav" aria-label="Assistant navigation">
+    <a href="verified-assistant_dashboard.html" aria-current="page">Dashboard</a>
     <a href="verified-assistant_available-requests.html">Available Requests</a>
     <a href="verified-assistant_active-jobs.html">Active Jobs</a>
     <a href="verified-assistant_completed-jobs.html">Completed Jobs</a>
@@ -346,13 +383,16 @@
     <a href="verified-assistant_profile.html">Profile</a>
   </nav>
 
-  <main>
+  <main id="main-content" tabindex="-1">
     <section class="welcome card">
-      <h2>Welcome back</h2>
-      <p>Manage your verification, training, availability, and jobs from here.</p>
+      <p class="eyebrow">YOUR COMMUNITY, YOUR IMPACT</p><h2 id="welcome-name">Welcome back</h2>
+      <p>A little of your time can make a big difference. Find a request, keep your jobs moving, and see the help you have delivered.</p>
     </section>
 
-    <h2 class="section-title">Status</h2>
+    <div class="dashboard-toolbar"><h2>Your service overview</h2><button type="button" class="btn btn-secondary" id="refresh-dashboard">Refresh</button></div>
+<section class="stat-grid" aria-label="Job summary"><a class="stat-card" href="verified-assistant_available-requests.html"><span id="available-count" class="stat-value">—</span><span class="stat-label">Available requests →</span></a><a class="stat-card" href="verified-assistant_active-jobs.html"><span id="active-count" class="stat-value">—</span><span class="stat-label">Active jobs →</span></a><a class="stat-card" href="verified-assistant_completed-jobs.html"><span id="completed-count" class="stat-value">—</span><span class="stat-label">Completed jobs →</span></a></section>
+<section class="card"><h2>Donation deliveries &amp; chat</h2><p class="status-explanation">When you are available and free, delivery requests can connect you with a donor and recipient. Open your chats to coordinate a matched delivery or accept one waiting for help.</p><a class="btn btn-primary" href="../../chat.html" style="margin-top:16px">Open messages &amp; deliveries</a></section>
+<h2 class="section-title">Your readiness</h2>
     <section class="grid">
       <article class="card">
         <h3>Verification Status</h3>
@@ -362,21 +402,21 @@
       <article class="card">
         <h3>Training Status</h3>
         <div id="trainingStatusBadge" style="margin-top:10px;"></div>
-        <p class="hint" style="margin-top:10px;"><a href="verified-assistant_training.html">View training modules →</a></p>
+        <p class="hint" style="margin-top:10px;"><a href="verified-assistant_training.html">View training status →</a></p>
       </article>
       <article class="card">
         <h3>Availability</h3>
-        <div id="availabilityToggleContainer"></div>
+        <div id="availabilityToggleContainer"><button type="button" class="btn btn-secondary" id="availability-toggle" aria-pressed="false" disabled>Loading…</button><p class="hint">Let the team know when you can help. Existing jobs stay assigned when you switch off.</p><p id="availability-message" role="status"></p></div>
       </article>
     </section>
 
-    <h2 class="section-title">Available Requests</h2>
+    <div class="section-heading"><h2>Available Requests</h2><a href="verified-assistant_available-requests.html">View all →</a></div>
     <section id="availableRequestsContainer" class="grid"></section>
 
-    <h2 class="section-title">Active Jobs</h2>
+    <div class="section-heading"><h2>Active Jobs</h2><a href="verified-assistant_active-jobs.html">View all →</a></div>
     <section id="activeJobsContainer" class="grid"></section>
 
-    <h2 class="section-title">Completed Jobs</h2>
+    <div class="section-heading"><h2>Completed Jobs</h2><a href="verified-assistant_completed-jobs.html">View all →</a></div>
     <section id="completedJobsContainer" class="grid"></section>
   </main>
 

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Messages & deliveries | Community Services</title>
+<style>*{box-sizing:border-box} body{margin:0;font:16px/1.6 Arial,Helvetica,sans-serif;color:#1f2937;background:#f4f6f8} header{background:white;padding:20px 28px;border-bottom:1px solid #e5e7eb} header a{color:#111827;text-decoration:none;font-weight:bold} main.auth-card{width:min(480px,calc(100% - 32px));margin:40px auto;background:white;padding:32px;border-radius:18px;box-shadow:0 8px 24px #0000000d} h1{line-height:1.2;font-size:2rem} label{display:block;font-weight:600;margin-top:16px} input{width:100%;padding:12px;border:1px solid #9ca3af;border-radius:8px;font:inherit} button,.primary-link{display:inline-block;padding:12px 18px;border:0;border-radius:8px;background:#111827;color:#fff;cursor:pointer;font:inherit;text-decoration:none} form button{width:100%;margin-top:22px} button.secondary{background:#e5e7eb;color:#111827;margin-top:12px} button:disabled{opacity:.6;cursor:wait} a{color:#1d4ed8} :focus-visible{outline:3px solid #2563eb;outline-offset:3px} #auth-message{white-space:pre-line;color:#1f2937;margin:18px 0} .links{display:flex;flex-wrap:wrap;gap:16px;margin-top:20px} .hint{color:#4b5563;font-size:.9rem} [hidden]{display:none!important}
+
+[hidden] { display:none !important; }
+.auth-shell { font:16px/1.6 Arial,sans-serif; color:#1f2937; background:#f4f6f8; padding:32px; min-height:100vh; }
+.auth-shell button,.auth-account button { padding:10px 16px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#111827; cursor:pointer; }
+.auth-account { display:flex; gap:12px; justify-content:flex-end; align-items:center; padding:10px 24px; background:#fff; border-bottom:1px solid #e5e7eb; font:14px Arial,sans-serif; }
+.auth-account span { margin-right:auto; }
+.dev-princess { color:#542064; font:16px/1.6 Arial,sans-serif; }
+.dev-princess button { display:block; width:100%; margin:12px 0; padding:14px 20px; border:2px solid #b7358b; border-radius:28px; background:linear-gradient(135deg,#ffe0ef,#e8d9ff); color:#542064; font:700 16px/1.4 Arial,sans-serif; cursor:pointer; box-shadow:0 5px 16px #c9469d33; }
+.dev-princess button:hover { background:#f9c3e7; }
+.dev-princess button:focus-visible { outline:3px solid #542064; outline-offset:4px; }
+.dev-princess button:disabled { opacity:.6; cursor:wait; }
+.dev-princess .dev-floating { position:fixed; bottom:16px; left:16px; width:auto; z-index:100; margin:0; }
+.dev-princess .dev-dialog { margin:auto; padding:28px; width:min(460px,calc(100% - 32px)); max-height:85vh; overflow:auto; border:3px solid #cb5ba9; border-radius:32px; background:radial-gradient(circle at 15% 10%,#fff 0 2px,transparent 3px),linear-gradient(135deg,#fff0f8,#eee1ff); background-size:24px 24px,auto; color:#542064; box-shadow:0 16px 80px #7e227c55; }
+.dev-dialog::backdrop { background:#29143199; }
+.dev-dialog p { margin:12px 0; }
+.dev-selector { max-width:720px; margin:40px auto; padding:32px; border:3px solid #cb5ba9; border-radius:40px; background:linear-gradient(140deg,#fff0f8,#eadbff); box-shadow:0 18px 60px #cb5ba933; text-align:center; }
+.dev-selector h1 { font-size:clamp(1.6rem,5vw,2.5rem); }
+.dev-selector .flowers { font-size:2rem; letter-spacing:.3em; }
+@media (prefers-reduced-motion:no-preference) { .dev-princess button { transition:background .15s,box-shadow .15s; } }
+@media (max-width:480px) { .dev-selector { margin:20px 12px; padding:20px; } .auth-account { flex-wrap:wrap; } }
+
+.profile-page { width:min(1000px,92%); margin:36px auto 90px; }
+.profile-page h1 { margin:24px 0 8px; }
+.profile-subtitle { color:#6b7280; margin:0 0 28px; }
+.profile-grid { display:grid; grid-template-columns:300px 1fr; gap:24px; align-items:start; }
+.profile-card { padding:28px; background:white; border-radius:18px; box-shadow:0 8px 24px #0000000d; }
+.profile-card h2 { font-size:1.25rem; margin:0 0 20px; }
+.profile-page fieldset { border:0; padding:0; margin:0; min-width:0; }
+.photo-card { text-align:center; }
+.avatar-frame { margin:20px auto; width:144px; height:144px; border-radius:50%; overflow:hidden; background:#e8edf5; display:grid; place-items:center; font-size:2.3rem; color:#475569; }
+.avatar-frame img { width:100%; height:100%; object-fit:cover; }
+.profile-page input[type=file] { font-size:.85rem; border:0; padding:10px 0; }
+.name-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.profile-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; }
+.profile-page form button { width:auto; margin-top:0; }
+.profile-page input[readonly] { background:#f4f6f8; color:#6b7280; }
+#profile-message { min-height:1.6em; padding:0 4px; }
+@media(max-width:700px) { .profile-grid,.name-grid { grid-template-columns:1fr; } .profile-card { padding:24px; } }
+</style>
+<script defer src="shared/frontend/navigation.js">
+</script>
+  <script defer src="shared/frontend/public-config.js">
+</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js">
+</script>
+  <script defer src="shared/frontend/supabase-client.js">
+</script>
+  <script defer src="shared/frontend/auth-policy.js">
+</script>
+  <script defer src="shared/frontend/auth.js">
+</script>
+  <script defer src="shared/frontend/developer-mode.js">
+</script>
+
+
+
+<script defer src="shared/frontend/item-chat.js"></script>
+<script defer src="shared/frontend/chat-page.js"></script>
+<script defer src="shared/frontend/auth-guard.js">
+</script>
+<style>
+body{background:#f3f7f6;color:#183c35;font-family:'Segoe UI',Arial,sans-serif}.chat-page{width:min(1180px,calc(100% - 32px));margin:28px auto 80px}.chat-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;background:none;border:0;padding:18px 0}.chat-heading h1{margin:4px 0 10px;font-size:clamp(1.8rem,4vw,2.5rem)}.chat-heading p{margin:4px 0}.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.12em;color:#17664f}.panel{background:#fff;border:1px solid #dae7df;border-radius:18px;padding:24px;min-width:0}.panel h2{font-size:1.2rem;margin-top:0}.chat-layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:20px;margin-top:24px}.chat-page button{font-weight:600;background:#17664f;color:white;border-radius:10px}.chat-page .secondary{background:#eaf1ed;color:#183c35;margin:0}.chat-page fieldset{border:0;padding:0;margin:0;min-width:0}.chat-page legend{font-weight:700;margin:20px 0 8px}.transport-options{display:grid;grid-template-columns:1fr 1fr;gap:16px}.transport-option{display:flex;align-items:flex-start;gap:12px;border:1px solid #c9ddd1;border-radius:12px;padding:18px;cursor:pointer;margin:0}.transport-option:has(input:checked){background:#edf8f1;border:2px solid #17664f;padding:17px}.transport-option input{width:20px;accent-color:#17664f;margin-top:4px}.transport-option small{display:block;font-weight:400;margin-top:8px;color:#536c65}#arrange-panel,#assistant-queue{margin:24px 0}.pager,.chat-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}.pager button{font-size:.8rem;padding:9px}.conversation-link{display:block;text-align:left;width:100%;margin:10px 0;padding:14px!important;background:#f1f6f3!important;color:#183c35!important;border:1px solid #dde8e0!important}.conversation-link[aria-current=true]{border-color:#17664f!important;box-shadow:inset 3px 0 #17664f}.conversation-link small{display:block;font-weight:400;margin-top:6px}.waiting-card{border-top:1px solid #e2ebe5;padding:12px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}#handoff-details{font-size:.9rem;overflow-wrap:anywhere;color:#536c65}#messages{list-style:none;padding:0;margin:20px 0;max-height:460px;overflow:auto;display:flex;flex-direction:column;gap:12px}.chat-message{max-width:88%;padding:12px 16px;border-radius:14px;background:#f0f4f2;align-self:flex-start;overflow-wrap:anywhere}.chat-message.mine{align-self:flex-end;background:#dff2e7}.chat-message p{white-space:pre-wrap;margin:6px 0}.chat-message small{font-size:.75rem;color:#536c65}.chat-page textarea{width:100%;resize:vertical;border:1px solid #a8bdb1;border-radius:10px;font:inherit;padding:12px}.compose-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px}.compose-footer button{width:auto;margin:0}.chat-page form button{width:auto}.chat-page [role=status]{overflow-wrap:anywhere}#older-messages{font-size:.8rem;padding:8px 12px}.auth-account{flex-wrap:wrap}
+@media(max-width:760px){.chat-layout{grid-template-columns:1fr}.transport-options{grid-template-columns:1fr}.panel{padding:18px}.chat-heading{align-items:flex-start}.chat-heading>button{padding:10px}.chat-message{max-width:95%}.compose-footer{flex-wrap:wrap}#conversations{max-height:240px;overflow:auto}}
+</style></head>
+<body data-auth-area="account">
+<section id="auth-shell" class="auth-shell">
+<p role="status">Checking your account…</p>
+<button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button>
+<noscript>
+<p>JavaScript is required to sign in and verify access.</p>
+</noscript>
+</section>
+<div id="protected-content" hidden>
+<div class="auth-account">
+<span data-auth-name>
+</span>
+<button type="button" data-auth-logout>Sign out</button>
+</div>
+<main class="chat-page">
+<a id="back-dashboard" href="login.html">← Back to dashboard</a>
+<header class="chat-heading"><div><p class="eyebrow">COMMUNITY CONNECTIONS</p><h1>Messages &amp; deliveries</h1><p>Arrange a collection, offer a delivery, or get a helping hand.</p></div><button type="button" id="refresh-chat" class="secondary">Refresh</button></header>
+<p id="chat-feedback" role="status" aria-live="polite"></p>
+<section id="arrange-panel" class="panel" hidden aria-labelledby="arrange-title">
+<p class="eyebrow" id="arrange-kind"></p><h2 id="arrange-title">Arrange this item</h2><p id="arrange-description"></p><p id="arrange-quantity"></p>
+<form id="arrange-form"><fieldset id="arrange-fields"><legend id="transport-question">How will the item get there?</legend>
+<div class="transport-options"><label class="transport-option"><input type="radio" name="transport" value="direct" required><span><strong id="direct-title">I can collect it myself</strong><small id="direct-note">Open a chat with the donor to arrange collection.</small></span></label>
+<label class="transport-option"><input type="radio" name="transport" value="assistance" required><span><strong>I need assistance</strong><small>Connect with an available, verified assistant for delivery.</small></span></label></div>
+<div id="location-group" hidden><label for="handoff-location" id="location-label">Delivery address / meeting place</label><input id="handoff-location" maxlength="500" autocomplete="street-address"><p class="hint">Shared only with the donor, recipient and matched assistant.</p></div>
+<p class="hint">This arrangement covers the full quantity shown. Either person can cancel before receipt is confirmed. If no assistant is free, the delivery waits for one to accept.</p>
+<button id="start-chat" type="submit">Continue to chat</button></fieldset><p id="arrange-feedback" role="status"></p></form></section>
+<section id="assistant-queue" class="panel" hidden><h2>Deliveries needing help</h2><p class="hint">Accept a delivery to join its chat. Finish your current jobs first.</p><div id="waiting-deliveries"></div><div class="pager"><button id="queue-prev" type="button" class="secondary">Previous</button><span id="queue-page"></span><button id="queue-next" type="button" class="secondary">Next</button></div></section>
+<div class="chat-layout"><aside class="panel inbox"><h2>Your conversations</h2><p class="hint">Chats and updates refresh every 10 seconds while this page is open.</p><div id="conversations"></div><div class="pager"><button id="inbox-prev" type="button" class="secondary">Previous</button><span id="inbox-page"></span><button id="inbox-next" type="button" class="secondary">Next</button></div></aside>
+<section class="panel conversation" aria-labelledby="conversation-title"><h2 id="conversation-title">Choose a conversation</h2><p id="conversation-summary">Your collection and delivery chats will appear here.</p><div id="handoff-details"></div><div id="handoff-actions" class="chat-actions"></div>
+<button id="older-messages" class="secondary" type="button" hidden>Load older messages</button><ol id="messages" aria-label="Messages"></ol><p id="new-message-status" role="status" aria-live="polite"></p>
+<form id="message-form" hidden><label for="message-body">Your message</label><textarea id="message-body" maxlength="2000" rows="3" required placeholder="Agree a time or ask about the item…"></textarea><div class="compose-footer"><span class="hint">Up to 2,000 characters · no attachments</span><button id="send-message" type="submit">Send message</button></div></form><p id="send-feedback" role="status"></p></section></div>
+</main>
+</div>
+</body>
+</html>

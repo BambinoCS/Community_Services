@@ -58,7 +58,9 @@
 </script>
   <script defer src="shared/frontend/developer-mode.js">
 </script>
-  <script defer src="shared/frontend/profile.js"></script>
+  <script defer src="shared/frontend/assistant-api.js"></script>
+<script defer src="shared/frontend/assistant-membership.js"></script>
+<script defer src="shared/frontend/profile.js"></script>
 <script defer src="shared/frontend/auth-guard.js">
 </script>
 </head>
@@ -108,7 +110,11 @@
 </fieldset>
 <p id="profile-message" role="status" aria-live="polite"></p>
 </form>
-</main>
+<section id="assistant-membership" class="profile-card" style="margin-top:24px" hidden>
+<h2>Become a community assistant</h2><p id="membership-status"></p>
+<button type="button" id="apply-assistant">Apply to become an assistant</button>
+<p style="margin-top:16px"><a href="verified-assistant/frontend/verified-assistant_training.html">View training and verification status →</a></p>
+<p id="membership-message" role="status"></p></section></main>
 </div>
 </body>
 </html>

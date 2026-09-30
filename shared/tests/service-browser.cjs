@@ -17,7 +17,12 @@ const pages = {
   completed: 'verified-assistant/frontend/verified-assistant_completed-jobs.html',
   dashboard: 'community-user/frontend/community-user_dashboard.html',
   donate: 'community-user/frontend/community-user_donate.html',
-  browse: 'community-user/frontend/community-user_browse-requests.html'
+  browse: 'community-user/frontend/community-user_browse-requests.html',
+  assistantDashboard: 'verified-assistant/frontend/verified-assistant_dashboard.html',
+  assistantProfile: 'verified-assistant/frontend/verified-assistant_profile.html',
+  training: 'verified-assistant/frontend/verified-assistant_training.html',
+  account: 'profile.html',
+  reviews: 'admin/frontend/admin_verify_assistants.html'
 };
 const sdkMock = `(() => {
   let callback;
@@ -32,6 +37,7 @@ const sdkMock = `(() => {
       const query = {table, filters:[], ors:[]};
       const builder = {
         select(columns) { query.columns=columns; return this; },
+        update(changes) { query.update=changes; return this; },
         insert(rows) { query.insert=Array.isArray(rows)?rows:[rows]; return this; },
         eq(key,value) { query.filters.push(['eq',key,value]); return this; },
         neq(key,value) { query.filters.push(['neq',key,value]); return this; },
@@ -64,7 +70,7 @@ const server = http.createServer((req, res) => {
 });
 
 function backend() {
-  const db = { requests: [], assignments: [], reports: [], donations: [], donation_images: [], storageFiles: [],
+  const db = { assistantRows: [], failUpdate: null, requests: [], assignments: [], reports: [], donations: [], donation_images: [], storageFiles: [],
     calls: [], failQuery: null, failRpc: null, delayRpc: 0 };
   const error = code => ({error:{code,message:'Private database detail must never be shown'}});
   const verified = account => account.assistant?.verification_status === 'verified' && account.assistant?.training_status === 'completed';
@@ -97,6 +103,15 @@ function backend() {
       return error('P0001');
     }
     if (call.kind === 'query') {
+      if (call.update) {
+        if (db.failUpdate) { db.failUpdate = null; return error('42501'); }
+        if (call.table === 'assistants') {
+          assert.deepEqual(Object.keys(call.update),['availability']);
+          assert.ok(call.filters.some(([op,key,value]) => key==='user_id' && value===account.id));
+          Object.assign(account.assistant,call.update); return {data:structuredClone(account.assistant)};
+        }
+        if (call.table === 'profiles') { account.savedProfile={...account.savedProfile,...call.update,id:account.id}; return {data:structuredClone(account.savedProfile)}; }
+      }
       if (call.insert) {
         if (call.table === 'requests') for (const row of call.insert) assert.equal(row.user_id,account.id);
         const defaults = call.table === 'donations' ? {status:'available'} : {};
@@ -104,8 +119,14 @@ function backend() {
         db[call.table].push(...rows);
         return {data:structuredClone(call.single ? rows[0] : rows)};
       }
-      if (call.table === 'profiles') return {data:{id:account.id, role:account.role || 'community_user', first_name:'Test', last_name:account.id}};
-      if (call.table === 'assistants') return {data:account.assistant || null};
+      if (call.table === 'profiles') return {data:{id:account.id, role:account.role || 'community_user', first_name:'Test', last_name:account.id,...account.savedProfile}};
+      if (call.table === 'assistants') {
+        if(call.single) return {data:structuredClone(account.assistant || null)};
+        let rows=db.assistantRows;
+        for(const [op,key,value] of call.filters) rows=rows.filter(row=>row[key]===value);
+        if(call.range) rows=rows.slice(call.range[0],call.range[1]+1);
+        return {data:structuredClone(rows)};
+      }
       if (call.table === 'developer_accounts') return {data:account.developer ? {user_id:account.id} : null};
       if (db.failQuery) { const code=db.failQuery; db.failQuery=null; return error(code); }
       // Model account visibility independently of the query's filters.
@@ -130,6 +151,17 @@ function backend() {
     const failure=db.failRpc; db.failRpc=null;
     if (failure && !failure.afterCommit) return error(failure.code);
     assert.ok(account.id, 'RPC requires an authenticated principal');
+    if (call.name === 'apply_to_be_assistant') {
+      account.assistant ||= {id:'assistant-'+account.id,user_id:account.id,verification_status:'pending',training_status:'not_started',availability:'unavailable'};
+      return {data:structuredClone(account.assistant)};
+    }
+    if (call.name === 'review_assistant') {
+      if(account.role!=='admin') return error('42501');
+      const target=db.assistantRows.find(row=>row.id===call.args.p_assistant_id);
+      if(!target || target.verification_status!==call.args.p_expected_verification || target.training_status!==call.args.p_expected_training) return error('40001');
+      target.verification_status=call.args.p_verification; target.training_status=call.args.p_training;
+      return {data:structuredClone(target)};
+    }
     assert.equal(Object.keys(call.args).some(key => /user|assistant|role|status/.test(key)),false,'client must not supply authority fields');
     let row=db.requests.find(request => request.id === call.args.p_request_id);
     if (call.name === 'create_service_request') {
@@ -164,11 +196,12 @@ function backend() {
 }
 
 (async () => {
+  fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
   await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}${prefix}`;
   const browser=await chromium.launch({channel:process.env.AUTH_TEST_BROWSER || 'msedge',headless:true});
   let count=0;
-  const assistant = id => ({id,role:'assistant',assistant:{id:'assistant-'+id,user_id:id,verification_status:'verified',training_status:'completed',availability:true}});
+  const assistant = id => ({id,role:'assistant',assistant:{id:'assistant-'+id,user_id:id,verification_status:'verified',training_status:'completed',availability:'unavailable'}});
   async function scenario(name, run) {
     const db=backend(), contexts=[], errors=[];
     async function account(settings) {
@@ -213,6 +246,78 @@ function backend() {
     await page.locator('#serviceUrgency').selectOption('medium');
   }
   try {
+    await scenario('assistant dashboard shows saved jobs, handles availability failures and survives reload', async ({db,account}) => {
+      db.request({description:'A neighbour needs groceries'});
+      const page=await account(assistant('worker'));
+      await open(page,'assistantDashboard');
+      await page.locator('#available-count').filter({hasText:'1'}).waitFor();
+      await page.locator('#availableRequestsContainer').filter({hasText:'A neighbour needs groceries'}).waitFor();
+      db.failUpdate=true;
+      await page.locator('#availability-toggle').click();
+      await page.locator('#availability-message').filter({hasText:'cannot make this change'}).waitFor();
+      assert.equal(await page.locator('#availability-toggle').getAttribute('aria-pressed'),'false');
+      await page.locator('#availability-toggle').click();
+      await page.locator('#availability-message').filter({hasText:'Availability saved'}).waitFor();
+      await page.reload();
+      await page.locator('#availability-toggle[aria-pressed="true"]').waitFor();
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await page.screenshot({path:path.join(root,'test-results/assistant-dashboard-mobile.png'),fullPage:true});
+      await page.setViewportSize({width:1440,height:1000});
+      await page.screenshot({path:path.join(root,'test-results/assistant-dashboard-desktop.png'),fullPage:true});
+    });
+    await scenario('assistant profile saves real details and preserves unsaved edits on recheck', async ({account}) => {
+      const page=await account(assistant('worker')); await open(page,'assistantProfile');
+      await page.locator('#first_name').fill('Naledi');
+      await page.evaluate(async()=>document.dispatchEvent(new CustomEvent('community:authenticated',{detail:await CommunityAuth.state(true)})));
+      assert.equal(await page.locator('#first_name').inputValue(),'Naledi');
+      await page.locator('#save-profile').click();
+      await page.locator('#profile-message').filter({hasText:'has been saved'}).waitFor();
+      await page.reload(); await page.locator('#first_name').waitFor();
+      assert.equal(await page.locator('#first_name').inputValue(),'Naledi');
+      await page.locator('#identityStatus').filter({hasText:'Verified'}).waitFor();
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await page.screenshot({path:path.join(root,'test-results/assistant-profile-mobile.png'),fullPage:true});
+    });
+    await scenario('community member applies once and sees actual pending training status', async ({db,account}) => {
+      const page=await account({id:'new-helper'}); await open(page,'account');
+      await page.locator('#apply-assistant').click();
+      await page.locator('#membership-message').filter({hasText:'Application received'}).waitFor();
+      await page.reload(); await page.locator('#membership-status').filter({hasText:'Pending'}).waitFor();
+      assert.equal(await page.locator('#apply-assistant').isVisible(),false);
+      await open(page,'training');
+      await page.locator('#training-state').filter({hasText:'Not Started'}).waitFor();
+      await page.locator('#verification-state').filter({hasText:'Pending'}).waitFor();
+      assert.equal(db.calls.filter(c=>c.name==='apply_to_be_assistant').length,1);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    });
+    await scenario('admin reviews real applications, validates reasons and detects stale reviews', async ({db,account}) => {
+      db.assistantRows.push({id:'app-1',user_id:'person-1',verification_status:'pending',training_status:'not_started',created_at:new Date().toISOString(),profiles:{first_name:'Lerato',last_name:'Mokoena'}});
+      const page=await account({id:'admin',role:'admin'}); await open(page,'reviews');
+      await page.getByRole('button',{name:'Review Lerato Mokoena'}).click();
+      await page.locator('#review-verification').selectOption('suspended');
+      await page.getByRole('button',{name:'Save review'}).click();
+      await page.locator('#dialog-message').filter({hasText:'Include a reason'}).waitFor();
+      await page.locator('#review-verification').selectOption('verified');
+      await page.locator('#review-training').selectOption('completed');
+      await page.getByRole('button',{name:'Save review'}).click();
+      await page.locator('#review-message').filter({hasText:'review saved'}).waitFor();
+      await page.locator('#assistantsTableBody').filter({hasText:'Verified'}).waitFor();
+      await page.getByRole('button',{name:'Review Lerato Mokoena'}).click();
+      db.assistantRows[0].verification_status='suspended';
+      await page.getByRole('button',{name:'Save review'}).click();
+      await page.locator('#dialog-message').filter({hasText:'updated by someone else'}).waitFor();
+      await page.getByRole('button',{name:'Cancel',exact:true}).click();
+      await page.locator('#refresh-assistants').click();
+      await page.locator('#assistantsTableBody').filter({hasText:'Suspended'}).waitFor();
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await page.screenshot({path:path.join(root,'test-results/assistant-review-mobile.png'),fullPage:true});
+    });
+    await scenario('developer admin preview cannot list or review assistant applications', async ({db,account}) => {
+      const page=await account({id:'dev',developer:true,developerView:'admin'}); await open(page,'reviews');
+      await page.locator('#emptyStateContainer').filter({hasText:'real administrator'}).waitFor();
+      assert.equal(await page.locator('#refresh-assistants').isDisabled(),true);
+      assert.equal(db.calls.some(c=>c.table==='assistants'&&!c.single),false);
+    });
     await scenario('service lifecycle persists across member and assistant accounts',async ({db,account}) => {
       const member=await account({id:'member'}), worker=await account(assistant('worker'));
       await open(member,'help'); await fillRequest(member);
@@ -391,7 +496,7 @@ function backend() {
       const directions=card.getByRole('link',{name:'Get Directions'});
       assert.match(await directions.getAttribute('href'),/google\.com\/maps\/dir/);
       assert.match(await directions.getAttribute('href'),/destination=-25\.7479/);
-      assert.equal(await card.getByRole('link',{name:'Donate This Item'}).getAttribute('href'),'community-user_donate.html');
+      assert.equal(await card.getByRole('link',{name:'Donate This Item'}).getAttribute('href'),base+'chat.html?request='+db.requests[0].id);
       await member.locator('#categoryFilter').selectOption('water');
       await member.getByText('No matching requests',{exact:true}).waitFor();
       await member.locator('#categoryFilter').selectOption('');
@@ -423,6 +528,7 @@ function backend() {
       await open(member,'dashboard');
       const result=member.locator('#searchResults .result-card').filter({hasText:'Winter blankets'});
       await result.waitFor();
+      assert.equal(await result.getByRole('link',{name:'Request this item · collection or assistance →'}).getAttribute('href'),base+'chat.html?donation='+db.donations[0].id);
       assert.match(await result.getByRole('link',{name:'Get Directions'}).getAttribute('href'),/google\.com\/maps\/dir/);
       await member.locator('#itemSearchInput').fill('blankets');
       await action(member,'Search');

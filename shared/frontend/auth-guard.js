@@ -187,6 +187,14 @@
     }
   }
 
+  if (accountBar && !location.pathname.endsWith('/chat.html') && !accountBar.querySelector('[data-auth-chat]')) {
+    const chatLink = document.createElement('a');
+    chatLink.href = AppNavigation.url('chat.html');
+    chatLink.textContent = 'Messages & deliveries';
+    chatLink.dataset.authChat = '';
+    accountBar.appendChild(chatLink);
+  }
+
   async function check() {
     if (checking) {
       rerun = true;

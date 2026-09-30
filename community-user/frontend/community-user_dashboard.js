@@ -39,10 +39,10 @@
     return CommunityAuth.getClient().storage.from('donation-images').getPublicUrl(path).data.publicUrl;
   }
 
-  function requestItemLink(itemName) {
+  function requestItemLink(donation) {
     const link = document.createElement('a');
-    link.href = 'community-user_request-new-item.html?item=' + encodeURIComponent(itemName || '');
-    link.textContent = 'Need this item? Request it →';
+    link.href = AppNavigation.url('chat.html') + '?donation=' + encodeURIComponent(donation.id);
+    link.textContent = 'Request this item · collection or assistance →';
     return link;
   }
 
@@ -70,7 +70,7 @@
       link.textContent = 'Get Directions';
       card.appendChild(link);
     }
-    card.appendChild(requestItemLink(donation.item_name));
+    card.appendChild(requestItemLink(donation));
     return card;
   }
 

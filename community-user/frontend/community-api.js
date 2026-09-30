@@ -143,8 +143,12 @@ API.ownDonations = async function(){
   return data||[];
 };
 API.browseResourceRequests = async function(){
-  const {data,error}=await client().rpc('browse_open_resource_requests');
-  if(error) throw fail(error,'Browse Requests needs migration 004_request_assignment_workflow.sql to be applied.');
+  await user();
+  const {data,error}=await client().from('requests')
+    .select('id,item_name,category,description,quantity,location,latitude,longitude,urgency,status,created_at')
+    .eq('request_type','resource').eq('status','open')
+    .order('created_at',{ascending:false}).limit(100);
+  if(error) throw fail(error,'Could not load open item requests. Please retry.');
   return data||[];
 };
 API.publicImageUrl = function(path){

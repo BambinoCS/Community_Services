@@ -1,5 +1,62 @@
 # Community Services
 
+## Donation chat, delivery assistance and admin completion
+
+Current handoff: **teamdevupdates/TEAM_UPDATE_LATEST8.txt**.
+
+- Request a listed donation: choose **I can collect it myself** or **I need assistance**.
+- Donate a requested item from Browse Requests: choose **I can deliver it myself**
+  or **I need assistance**, and provide the pickup location.
+- Both paths reserve the full listed/requested quantity and open a private chat.
+  The donor and recipient can coordinate, and an assigned assistant joins that chat.
+- Assistance matches a verified, training-completed, available assistant with no
+  active service assignment or item delivery at matching time. When none is free,
+  the request waits in Messages & deliveries for an available assistant to accept.
+- Only the recipient confirms receipt. Either donor or recipient can cancel an
+  unfinished arrangement; cancellation releases the listing/request. Chats become
+  read-only after cancellation or receipt. Stored history remains participant-only.
+- Messages use server-derived identity, safe text rendering, 2,000-character limits,
+  paginated history and retry IDs. Unsent drafts are retained in the current browser
+  session. Polling refreshes the visible page every 10 seconds; no push alerts,
+  read receipts, attachments or distance-based matching are implemented.
+- Admin pages now show real totals, searchable users, filtered/paginated requests
+  and donations, and a report review queue. Moderation requires a note and creates
+  an audit row. Only open unassigned requests and available unreserved donations
+  can be cancelled. Reviewing a report does not claim its underlying issue is resolved.
+
+Apply migrations **007**, **008_item_handoffs_chat.sql** and
+**009_admin_operations.sql** in sequence after 001–006. They have been tested locally
+but have NOT been applied to live Supabase. Deploy the updated static site alongside
+these migrations. No new production dependency or environment variable is required.
+The existing migration 003 expects SELECT on developer_accounts from Supabase default
+privileges; ensure that grant exists as described under Developer Mode below.
+
+## Assistant workspace completion
+
+Previous handoff: **teamdevupdates/TEAM_UPDATE_LATEST7.txt** (assistant completion).
+
+- The assistant dashboard now shows saved requests/jobs, bounded summary counts
+  (50+ when a page is full), refresh and a persistent availability toggle.
+- Assistant Profile reuses the working personal-details and avatar upload flow.
+  Training shows the real overall status; there are no fabricated module records.
+- Any signed-in user can read their own assistant profile/training status, including
+  pending assistants. Job pages still require verification AND completed training.
+- Community members can apply from the account Profile page. Applications are
+  idempotent, start pending/not-started/unavailable, and cannot reset a prior review.
+- Verify Assistants is connected to real records with filters, pagination, review
+  dialog and saved verification/training updates. Only an actual admin can review;
+  a developer preview grants no permissions. Rejection/suspension requires a reason.
+- Reviews use a locked, stale-status-checked RPC and append administrator-only audit
+  rows. Ineligible reviews clear availability. Availability is a preference and does
+  not grant job permissions or cancel/reassign existing jobs.
+- Assistant pages have consistent green styling, mobile navigation, visible active
+  links, keyboard skip links, loading/error/empty states and safe text rendering.
+
+Apply **007_assistant_management.sql** after 001–006 using the trusted Supabase
+migration process. This checkout has NOT applied live migrations or deployed files.
+No new environment variables, production packages or Express server are needed.
+Profile/availability writes use existing RLS; application/review RPCs require 007.
+
 ## Integrated Request Help and service workflow
 
 The team's separate Report a Problem, Request a Service and Request New Items pages
@@ -39,10 +96,10 @@ donation APIs remain in place; donations accept images, uploaded to the public
 search lists matching donations and offers "Request this item" links into the item
 request page. Reports submitted to the reports table remain separate from
 My Requests. Lists show 50 records per page; filters apply to the displayed page.
-Use Refresh to see other users' changes. No realtime notifications or availability
-editing added.
+Use Refresh to see other users' changes. Realtime notifications are not implemented.
+Availability editing is described above.
 
-Current handoff: **`teamdevupdates/TEAM_UPDATE_LATEST6.txt`**. Updates 4 and 5 are
+Previous integration handoff: **`teamdevupdates/TEAM_UPDATE_LATEST6.txt`**. Updates 4 and 5 are
 preserved historical snapshots; their file paths, migration numbers and Git status
 statements do not describe the merged implementation.
 
@@ -74,7 +131,7 @@ Request Help work is described above.
 
 ## Configuration and local development
 
-1. Use Node.js 22+ and the existing Supabase project with migrations 001–005 applied for the integrated workflow.
+1. Use Node.js 22+ and the existing Supabase project with migrations 001–009 applied for the current workflows.
 2. Copy `.env.example` to `.env` and set `SUPABASE_URL` and
    `SUPABASE_PUBLISHABLE_KEY` using the project's modern `sb_publishable_` key.
 3. Run `node shared/scripts/configure-public.cjs` from the repository root.
@@ -135,7 +192,8 @@ Official references: [Auth events](https://supabase.com/docs/reference/javascrip
 | Confirmation callback | Public callback; trusted account checks before routing |
 | Reset password | Public shell; recovery session required for form/update |
 | All `community-user/frontend/*.html` | Normal community destination, or selected developer view |
-| All `verified-assistant/frontend/*.html` | Verified **and** training completed, or selected developer view |
+| Assistant dashboard and job pages | Verified **and** training completed, or selected developer view |
+| Assistant profile and training pages | Authenticated; only own profile/status |
 | All `admin/frontend/*.html` | Trusted `profiles.role = admin`, or selected developer view |
 | `developer.html` and developer switcher | Own UUID exists in `developer_accounts` under RLS |
 
@@ -213,16 +271,17 @@ Also test the deployed GitHub Pages redirects and mobile browsers.
 
 Run `node shared/tests/request-help-static.cjs` for the team page wiring and
 `node shared/tests/service-browser.cjs` with the same Playwright/Edge setup. The
-19 scenarios cover the merged service lifecycle, duplicate retry protection, stale
+24 scenarios cover the merged service lifecycle, duplicate retry protection, stale
 acceptance, permissions, errors, mobile layout, pagination, retained item and
 report forms, live location capture, Get Directions links, dashboard donation
-search and donation image upload. The service browser backend is mocked; no live
+search and donation image upload, assistant dashboard/availability, profile persistence,
+application/training status and admin review permissions. The service browser backend is mocked; no live
 data is touched.
 
 Run `node --test shared/tests/service-database.test.cjs` with
 `@electric-sql/pglite` installed outside the repository. Set
 `SERVICE_TEST_PGLITE` to its absolute package path or use `NODE_PATH`.
-The 23 tests execute migrations 001, 003, 004, 005 and 006 in a disposable
+The 44 tests execute migrations 001 and 003–009 in a disposable
 database, checking authorization, RLS, validation, transitions, rollback,
 resource-request compatibility and the location/problem column checks. PGlite
 serializes connections and does not verify real concurrent PostgreSQL lock
@@ -236,20 +295,47 @@ cancellation, eligibility revocation, and actual PostgREST nested assignment rea
 
 ## Existing limitations and next work
 
-Admin verification/training management and other unconnected business screens
-still need their own implementation; the service workflow requires existing
-verified/trained assistant records and does not grant these statuses. Live
-database and GitHub Pages verification remain separate from automated tests.
-The existing Browse Requests API calls `browse_open_resource_requests`, whose
-migration is not present in this checkout; this integration does not implement
-it. Realtime updates and remaining business workflows need their own review.
+Admin pages are connected through migration 009. User role changes and arbitrary
+status editing are intentionally excluded; use the documented review/cancellation actions.
+Online training lessons/module tracking, verification-document submission, service
+category preferences, realtime notifications and job reassignment are not implemented.
+An administrator records training completion only after the team's actual review.
+If an assistant is suspended with active work, coordinate handover with the team;
+eligibility checks intentionally prevent further protected job transitions.
+
+Browse Requests already uses the migration 006 read policy for open resource
+requests. Its reusable API has also been repaired to use that policy, removing the
+obsolete reference to a missing browse RPC/migration. Live database, Storage and
+GitHub Pages verification remain necessary.
 
 Live location uses the browser geolocation API and OpenStreetMap Nominatim
 reverse geocoding; both need user permission and internet access, and Nominatim
 has public usage limits. Where either is unavailable the forms still accept
 typed addresses and directions fall back to the address text.
 
-Team handoffs belong in **`teamdevupdates/`**. Update 6 supersedes the historical
+Team handoffs belong in **`teamdevupdates/`**. Update 8 is current; update 6 supersedes the historical
 update 4/5 integration and Git-status instructions; older documents mentioning
 `shared/docs` or a root `TEAM_UPDATE_LATEST.txt` are stale. The external option 3
 backup and original newbranch remain available for comparison.
+
+## Chat/admin integration verification
+
+Run node shared/tests/chat-browser.cjs with Playwright, Edge and SERVICE_TEST_PGLITE
+configured as above. Its 10 scenarios run the UI against the real migrations/RLS in
+a disposable database, with fake Auth identities and no live Supabase access.
+Coverage includes all four collection/delivery choices, waiting and matching helpers,
+private cross-account messages, lost-response retries, history pagination, escaped
+content, recipient receipt confirmation, admin lists, moderation and developer denial.
+
+Latest local verification: 10 auth unit tests, 27 offline auth browser scenarios,
+24 service browser scenarios, 44 SQL tests and 10 chat/admin integration scenarios
+(115 passed), plus static reference/syntax checks. Two real-SDK callback scenarios
+were skipped in the latest run because the network-enabled run could not be approved.
+Set AUTH_TEST_OFFLINE=1 to run the 27 local scenarios explicitly; unset it for the full
+29-case auth suite when network access is available.
+
+Before live release, test separate real accounts, PostgREST RPC signatures, actual
+concurrent reservations/matching, Storage, and deployed routing. PGlite serializes
+connections and does not establish real PostgreSQL concurrency behavior. A suspended
+assistant loses chat access; participants can cancel and start a new assistance
+arrangement if the delivery has not occurred. Automatic reassignment is not implemented.

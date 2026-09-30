@@ -324,8 +324,14 @@
   <script defer src="../../shared/frontend/auth-policy.js"></script>
   <script defer src="../../shared/frontend/auth.js"></script>
   <script defer src="../../shared/frontend/developer-mode.js"></script>
-  <script defer src="../../shared/frontend/auth-guard.js"></script>
-</head>
+  <script defer src="../../shared/frontend/admin-api.js"></script>
+<script defer src="../../shared/frontend/admin-page.js"></script>
+<script defer src="admin_donations.js"></script>
+<script defer src="../../shared/frontend/auth-guard.js"></script>
+<style>
+.admin-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0}#admin-feedback{margin:16px 0}#admin-detail{margin:auto;width:min(640px,calc(100% - 32px));max-height:90vh;overflow:auto;padding:24px;border:1px solid #dbe6e1;border-radius:18px;color:#1f2937}#admin-detail::backdrop{background:#142f2999}#admin-detail fieldset{border:0;padding:0;margin:0}#admin-detail dt{font-weight:bold;margin-top:12px}#admin-detail dd{margin:4px 0;overflow-wrap:anywhere;white-space:pre-wrap}#admin-detail .hint{margin:18px 0}.auth-account{flex-wrap:wrap}.data-table td{overflow-wrap:anywhere}.item-card p{overflow-wrap:anywhere;margin:10px 0}#emptyStateContainer{padding:16px}
+@media(max-width:700px){table.data-table,table.data-table tbody,table.data-table tr,table.data-table td{display:block;width:100%}table.data-table thead{display:none}.table-wrap{background:transparent;box-shadow:none;overflow:visible}table.data-table tr{background:#fff;padding:16px;border:1px solid #e5e7eb;border-radius:16px;margin-bottom:12px}table.data-table td,.table-wrap td:first-child{display:flex;justify-content:space-between;gap:18px;padding:10px 0;align-items:center}table.data-table td::before{content:attr(data-label);color:#6b7280;flex-shrink:0;font-size:.8rem}table.data-table td:last-child{border:0}.data-table button{white-space:nowrap}nav.app-nav{flex-wrap:wrap}nav.app-nav a{white-space:normal;font-size:.82rem}}
+</style></head>
 
 <body data-auth-area="admin">
 <section id="auth-shell" class="auth-shell"><p role="status">Checking your account…</p><button type="button" data-auth-retry>Retry</button> <button type="button" data-auth-logout>Sign out</button><noscript><p>JavaScript is required to sign in and verify access.</p></noscript></section>
@@ -370,7 +376,7 @@
           <option value="clothing">Clothing</option>
           <option value="school_supplies">School Supplies</option>
           <option value="household_goods">Household Goods</option>
-          <option value="other">Other</option>
+          <option value="other_essentials">Other essentials</option><option value="other">Other</option>
         </select>
       </div>
     </div>
@@ -384,11 +390,11 @@
       </table>
       <div id="emptyStateContainer"></div>
     </div>
-  </main>
+  <dialog id="admin-detail" aria-labelledby="admin-detail-title"><h2 id="admin-detail-title">Record details</h2><dl id="admin-detail-body"></dl><form id="admin-action-form"><fieldset><p id="admin-action-help" class="hint"></p><div id="admin-note-group"><label for="admin-note">Review note / cancellation reason</label><textarea id="admin-note" maxlength="1000" rows="3"></textarea></div><div class="admin-toolbar"><button type="submit" class="btn btn-primary" id="admin-save">Save</button><button type="button" class="btn btn-secondary" id="admin-close">Close</button></div></fieldset><p id="admin-action-message" role="status"></p></form></dialog></main>
 
   <script src="../../shared/frontend/status.js"></script>
   <script src="../../shared/frontend/ui.js"></script>
-  <script src="admin_donations.js"></script>
+
 </div>
 </body>
 </html>

@@ -259,6 +259,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>testCalls.length),0);
     });
     // Exercise the pinned SDK's real implicit callback parsing/event ordering against mocked HTTP.
+    if (process.env.AUTH_TEST_OFFLINE !== '1') {
     const response = await fetch('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js', { signal: AbortSignal.timeout(20000) });
     assert.ok(response.ok); actualSDK = await response.text();
     for (const type of ['signup', 'recovery']) {
@@ -279,6 +280,7 @@ const server = http.createServer((req, res) => {
         }
       });
     }
-    console.log(`${count} browser scenarios passed (including 2 real SDK with mocked HTTP). These are not live account tests.`);
+    } else console.log('SKIP: 2 real SDK callback cases (AUTH_TEST_OFFLINE=1; network download disabled).');
+    console.log(`${count} browser scenarios passed. These are not live account tests.`);
   } finally { await browser.close(); server.close(); }
 })().catch(error => { console.error(error); server.close(); process.exitCode = 1; });
