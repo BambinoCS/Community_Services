@@ -93,6 +93,7 @@
       return 'Service requests are not available yet. Please contact the project team to finish setup.';
     }
     if (error?.code === '42501') return 'Your account cannot perform this action. Refresh to check your current access.';
+    if (error?.code === '55000') return 'Finish your current item delivery before accepting a service request. Open Messages & deliveries to check the arrangement.';
     if (error?.code === '22023') return 'Check the request fields and preferred date, then try again.';
     if (['P0001', '23505', '40001'].includes(error?.code)) {
       return 'This request has changed or is no longer available for that action. Refresh to see its current status.';

@@ -4,7 +4,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const migrations = ['007_assistant_management.sql', '008_item_handoffs_chat.sql', '009_admin_operations.sql'];
+const migrations = ['007_assistant_management.sql', '008_item_handoffs_chat.sql', '009_admin_operations.sql', '010_assistant_delivery_workload.sql'];
 
 function buildWorkflowSetup() {
   const bodies = migrations.map(name => {
@@ -14,9 +14,9 @@ function buildWorkflowSetup() {
     }
     return '-- ' + name + '\n' + sql.replace(/^begin;\n/m, '').replace(/\ncommit;\s*$/, '\n');
   });
-  return `-- Community Services: missing assistant, chat and admin setup (007-009).
+  return `-- Community Services: missing assistant, chat and admin setup (007-010).
 -- Run the ENTIRE file once in this project's Supabase SQL Editor as postgres.
--- Requires migrations 001-006. Do not also run 007-009 individually.
+-- Requires migrations 001-006. Do not also run 007-010 individually.
 -- Existing application data is preserved. Any error rolls the whole update back.
 begin;
 set local lock_timeout = '10s';

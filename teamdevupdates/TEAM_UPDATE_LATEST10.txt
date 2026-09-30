@@ -1,0 +1,47 @@
+COMMUNITY SERVICES — FRONTEND/BACKEND AUDIT AND LIVE SETUP BLOCKER
+Date: 30 September 2026
+Previous handoffs: TEAM_UPDATE_LATEST9.txt (setup), TEAM_UPDATE_LATEST8.txt (features)
+
+Live chat error
+Rechecked the configured Supabase API: assistant_reviews, item_handoffs,
+chat_messages and admin_actions still return PGRST205 (not in schema cache).
+No live schema changes were made. The signed-in BambinoCS Supabase dashboard shows
+no organizations. Opening project oiszuaeuyqmlciywsvob's SQL Editor redirects to the
+empty organizations page. This account currently cannot administer the project.
+The project owner must sign in or apply the setup SQL. Git pushes alone do not fix
+the live database. Do not describe live chat as repaired until setup is applied.
+
+Audit fixes
+1. chat-page.js now discards a cancelled arrangement's saved retry ID when reopening
+   its source. Previously the same browser could keep reopening the closed chat,
+   preventing a new collection/delivery arrangement. Both donation and requested
+   item flows are covered by new browser regression scenarios.
+2. Migration 010 replaces accept_service_request to take an exclusive assistant
+   lock and reject service acceptance while an item delivery is arranged. This
+   closes the reverse path that allowed delivery assistants to accept service work.
+   Matching already excluded assistants with service assignments. Completion or
+   cancellation releases the restriction. Existing service-job eligibility and
+   multi-service-job behavior are preserved. Frontend error 55000 directs the
+   assistant to Messages & deliveries. Regression tests verify atomic refusal,
+   unchanged request/assignment records, and both release paths.
+
+Deployment
+The build-workflow-setup.cjs generator now bundles 007-010 into the existing
+test-results/community-workflows-setup.sql artifact. For a project with 001-006
+installed and all workflow tables absent, run the entire generated file in its
+trusted SQL Editor. It is one transaction and refreshes the API schema cache.
+If some migrations already exist, apply only the outstanding migrations in order.
+For an installation already on 009, only 010 is needed for the workload fix.
+Never remove existing tables or move users to an empty project as a setup shortcut.
+
+Verification
+10 auth unit tests, all 29 auth browser scenarios including real pinned-SDK callback
+parsing, 25 service browser scenarios, 46 database tests, 3 setup-transaction tests,
+12 chat/admin browser scenarios using the bundled setup: 125 passed.
+Static syntax/reference checks passed for 68 JS/CJS files and 31 HTML pages, zero
+missing references; Request Help wiring checks also passed.
+These tests use fake Auth identities, local Edge and disposable SQL databases.
+Live email, Storage, multiple real accounts and concurrent PostgreSQL scheduling
+are still release checks. PGlite serializes connections, so it cannot prove live
+cross-connection lock scheduling. The project-access blocker remains independent
+of the passing local tests. See the task's final message for commit/push status.

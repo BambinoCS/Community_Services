@@ -40,7 +40,7 @@ before(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;
   `);
-  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_request_help_fields.sql', '005_service_request_workflow.sql', '006_location_resource_problem.sql', '007_assistant_management.sql', '008_item_handoffs_chat.sql', '009_admin_operations.sql']) {
+  for (const name of ['001_initial_schema.sql', '003_developer_accounts.sql', '004_request_help_fields.sql', '005_service_request_workflow.sql', '006_location_resource_problem.sql', '007_assistant_management.sql', '008_item_handoffs_chat.sql', '009_admin_operations.sql', '010_assistant_delivery_workload.sql']) {
     await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations', name), 'utf8'));
   }
   for (const id of Object.values(ids)) await db.query('insert into auth.users(id) values ($1)', [id]);
@@ -598,6 +598,19 @@ databaseTest('active service jobs prevent automatic delivery matching',async()=>
   await asUser(ids.assistant);await rpc('accept',service.id);
   await db.query("update public.assistants set availability='available' where user_id=$1",[ids.assistant]);
   await asUser(ids.stranger);assert.equal((await handoff(donation.id,'assistance','donation','Address')).status,'waiting_assistant');
+});
+
+for (const outcome of ['completed','cancelled']) databaseTest('active delivery blocks service acceptance until '+outcome,async()=>{
+  const donation=await donatedItem();
+  await db.query("update public.assistants set availability='available' where user_id=$1",[ids.assistant]);
+  await asUser(ids.owner);const service=await create();
+  await asUser(ids.stranger);const delivery=await handoff(donation.id,'assistance','donation','Recipient address');
+  assert.equal(delivery.status,'arranged');
+  await asUser(ids.assistant);await expectFailure(()=>rpc('accept',service.id),'55000');
+  await trusted();assert.equal((await db.query('select status from public.requests where id=$1',[service.id])).rows[0].status,'open');
+  assert.equal((await db.query('select count(*)::int as total from public.assignments where request_id=$1',[service.id])).rows[0].total,0);
+  await asUser(ids.stranger);await finishHandoff(delivery.id,outcome);
+  await asUser(ids.assistant);assert.equal((await rpc('accept',service.id)).status,'assigned');
 });
 
 databaseTest('competing item requests cannot double reserve and cancellation safely reopens the source',async()=>{

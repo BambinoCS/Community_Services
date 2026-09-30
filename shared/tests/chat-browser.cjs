@@ -38,7 +38,7 @@ async function request(user,call){
 (async()=>{
  db=new PGlite();await db.exec(`create role anon nologin;create role authenticated nologin;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema public,auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
  const setupBundle=process.env.WORKFLOW_SETUP_BUNDLE==='1';
- for(const file of fs.readdirSync(path.join(root,'shared/supabase/migrations')).filter(n=>n.endsWith('.sql')&&!n.startsWith('002')&&(!setupBundle||!/^(007|008|009)_/.test(n))).sort())await db.exec(fs.readFileSync(path.join(root,'shared/supabase/migrations',file),'utf8'));
+ for(const file of fs.readdirSync(path.join(root,'shared/supabase/migrations')).filter(n=>n.endsWith('.sql')&&!n.startsWith('002')&&(!setupBundle||!/^(007|008|009|010)_/.test(n))).sort())await db.exec(fs.readFileSync(path.join(root,'shared/supabase/migrations',file),'utf8'));
  if(setupBundle)await db.exec(require('../scripts/build-workflow-setup.cjs').buildWorkflowSetup());
  // Supabase default table privileges provide this grant for migration 003.
  await db.exec('grant select on public.developer_accounts to authenticated');
@@ -74,6 +74,15 @@ async function request(user,call){
   await scenario('donor offers requested item with self delivery and recipient can cancel',async({need,pageFor})=>{
    const donor=await pageFor('donor');await open(donor,'?request='+need);await donor.locator('#transport-question').filter({hasText:'deliver'}).waitFor();await choose(donor,'direct','Donor collection point');await send(donor,'I can bring the jackets on Friday.');
    const recipient=await pageFor('recipient');await open(recipient,new URL(donor.url()).search);await recipient.locator('#messages').filter({hasText:'Friday'}).waitFor();await recipient.getByRole('button',{name:'Cancel arrangement'}).click();await recipient.locator('#send-feedback').filter({hasText:'closed'}).waitFor();assert.equal((await db.query('select status from public.requests where id=$1',[need])).rows[0].status,'open');
+  });
+  for(const sourceType of ['donation','request'])await scenario('cancelled '+sourceType+' can start a fresh arrangement in the same browser',async({donation,need,pageFor})=>{
+   const page=await pageFor(sourceType==='donation'?'recipient':'donor');const query='?'+sourceType+'='+(sourceType==='donation'?donation:need);
+   await open(page,query);await choose(page,'direct',sourceType==='request'?'Donor address':'');
+   const first=new URL(page.url()).searchParams.get('id');await page.getByRole('button',{name:'Cancel arrangement'}).click();await page.locator('#send-feedback').filter({hasText:'closed'}).waitFor();
+   await open(page,query);await page.locator('#arrange-fields').waitFor({state:'visible'});await choose(page,'direct',sourceType==='request'?'Donor address':'');
+   const second=new URL(page.url()).searchParams.get('id');assert.notEqual(first,second);
+   assert.equal((await db.query('select status from public.item_handoffs where id=$1',[first])).rows[0].status,'cancelled');
+   assert.equal((await db.query('select status from public.item_handoffs where id=$1',[second])).rows[0].status,'arranged');
   });
   await scenario('requesting donation with assistance connects available helper to the same chat',async({ids,donation,pageFor})=>{
    await db.query("update public.assistants set availability='available' where user_id=$1",[ids.helper]);

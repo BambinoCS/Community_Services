@@ -2,7 +2,7 @@
 
 ## Donation chat, delivery assistance and admin completion
 
-Current setup handoff: **teamdevupdates/TEAM_UPDATE_LATEST9.txt**.
+Current audit/setup handoff: **teamdevupdates/TEAM_UPDATE_LATEST10.txt**.
 Feature handoff: **teamdevupdates/TEAM_UPDATE_LATEST8.txt**.
 
 - Request a listed donation: choose **I can collect it myself** or **I need assistance**.
@@ -26,11 +26,14 @@ Feature handoff: **teamdevupdates/TEAM_UPDATE_LATEST8.txt**.
   can be cancelled. Reviewing a report does not claim its underlying issue is resolved.
 
 Apply migrations **007**, **008_item_handoffs_chat.sql** and
-**009_admin_operations.sql** in sequence after 001–006. They have been tested locally
+**009_admin_operations.sql**, then **010_assistant_delivery_workload.sql**, in sequence after 001–006. They have been tested locally
 but have NOT been applied to live Supabase. Deploy the updated static site alongside
 these migrations. No new production dependency or environment variable is required.
 The existing migration 003 expects SELECT on developer_accounts from Supabase default
 privileges; ensure that grant exists as described under Developer Mode below.
+Migration 010 prevents an assistant with an active item delivery from accepting a
+service job; acceptance and delivery matching lock the same assistant record.
+Cancelled arrangements can be started again from the original listing in the same browser.
 
 ### Fix "Chat and delivery arrangements are not available yet"
 
@@ -47,16 +50,21 @@ node shared/scripts/build-workflow-setup.cjs
 
 Open `test-results/community-workflows-setup.sql`, copy the entire file into your
 project's Supabase SQL Editor, and run it as the database administrator. The script
-uses the original migrations in one transaction, preserves application data, stops
+includes migrations 007–010 in one transaction, preserves application data, stops
 on missing prerequisites/conflicting objects, and requests an API schema refresh
 after success. It does not require any private key in website code. The generator
 only creates a local file; it does not connect to or update Supabase itself.
 
 If any of 007–009 are already installed, inspect the database and apply only the
-outstanding individual migrations in order. Do not rerun this bundle or remove
+outstanding individual migrations through 010 in order. Do not rerun this bundle or remove
 existing tables. If the objects exist but the API still cannot see them, run
 `NOTIFY pgrst, 'reload schema';` in the trusted SQL Editor. Refresh the website after
 the API reloads, then verify collection/delivery chat with separate real accounts.
+
+The Supabase account must have access to the configured project. An account showing
+no organizations and redirecting the project's SQL Editor to the organization list
+cannot apply these updates. Sign in with the project owner's account or ask the
+owner to apply the SQL; creating a new project will not repair the existing database.
 
 Test the setup transaction with `node --test shared/tests/workflow-setup.test.cjs`
 using the PGlite configuration below. Set `WORKFLOW_SETUP_BUNDLE=1` when running
@@ -162,7 +170,7 @@ Request Help work is described above.
 
 ## Configuration and local development
 
-1. Use Node.js 22+ and the existing Supabase project with migrations 001–009 applied for the current workflows.
+1. Use Node.js 22+ and the existing Supabase project with migrations 001–010 applied for the current workflows.
 2. Copy `.env.example` to `.env` and set `SUPABASE_URL` and
    `SUPABASE_PUBLISHABLE_KEY` using the project's modern `sb_publishable_` key.
 3. Run `node shared/scripts/configure-public.cjs` from the repository root.
@@ -302,7 +310,7 @@ Also test the deployed GitHub Pages redirects and mobile browsers.
 
 Run `node shared/tests/request-help-static.cjs` for the team page wiring and
 `node shared/tests/service-browser.cjs` with the same Playwright/Edge setup. The
-24 scenarios cover the merged service lifecycle, duplicate retry protection, stale
+25 scenarios cover the merged service lifecycle, duplicate retry protection, stale
 acceptance, permissions, errors, mobile layout, pagination, retained item and
 report forms, live location capture, Get Directions links, dashboard donation
 search and donation image upload, assistant dashboard/availability, profile persistence,
@@ -312,7 +320,7 @@ data is touched.
 Run `node --test shared/tests/service-database.test.cjs` with
 `@electric-sql/pglite` installed outside the repository. Set
 `SERVICE_TEST_PGLITE` to its absolute package path or use `NODE_PATH`.
-The 44 tests execute migrations 001 and 003–009 in a disposable
+The 46 tests execute migrations 001 and 003–010 in a disposable
 database, checking authorization, RLS, validation, transitions, rollback,
 resource-request compatibility and the location/problem column checks. PGlite
 serializes connections and does not verify real concurrent PostgreSQL lock
@@ -344,7 +352,7 @@ reverse geocoding; both need user permission and internet access, and Nominatim
 has public usage limits. Where either is unavailable the forms still accept
 typed addresses and directions fall back to the address text.
 
-Team handoffs belong in **`teamdevupdates/`**. Update 9 covers setup repair and update 8 covers features; update 6 supersedes the historical
+Team handoffs belong in **`teamdevupdates/`**. Update 10 covers the audit and current setup, update 9 covers the initial setup repair, and update 8 covers features; update 6 supersedes the historical
 update 4/5 integration and Git-status instructions; older documents mentioning
 `shared/docs` or a root `TEAM_UPDATE_LATEST.txt` are stale. The external option 3
 backup and original newbranch remain available for comparison.
@@ -352,18 +360,17 @@ backup and original newbranch remain available for comparison.
 ## Chat/admin integration verification
 
 Run node shared/tests/chat-browser.cjs with Playwright, Edge and SERVICE_TEST_PGLITE
-configured as above. Its 10 scenarios run the UI against the real migrations/RLS in
+configured as above. Its 12 scenarios run the UI against the real migrations/RLS in
 a disposable database, with fake Auth identities and no live Supabase access.
 Coverage includes all four collection/delivery choices, waiting and matching helpers,
 private cross-account messages, lost-response retries, history pagination, escaped
 content, recipient receipt confirmation, admin lists, moderation and developer denial.
 
-Latest local verification: 10 auth unit tests, 27 offline auth browser scenarios,
-24 service browser scenarios, 44 SQL tests and 10 chat/admin integration scenarios
-(115 passed), plus static reference/syntax checks. Two real-SDK callback scenarios
-were skipped in the latest run because the network-enabled run could not be approved.
-Set AUTH_TEST_OFFLINE=1 to run the 27 local scenarios explicitly; unset it for the full
-29-case auth suite when network access is available.
+Latest local verification: 10 auth unit tests, all 29 auth browser scenarios,
+25 service browser scenarios, 46 SQL tests, 3 setup-transaction tests and 12 chat/admin
+integration scenarios (125 passed), plus static reference/syntax checks. The full
+auth suite includes the two real-SDK callback cases. Set AUTH_TEST_OFFLINE=1 only
+when network access is unavailable; that explicitly skips those two cases.
 
 Before live release, test separate real accounts, PostgREST RPC signatures, actual
 concurrent reservations/matching, Storage, and deployed routing. PGlite serializes

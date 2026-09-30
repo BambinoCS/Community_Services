@@ -386,6 +386,13 @@ function backend() {
       assert.equal(await member.getByText('Private database detail',{exact:false}).count(),0);
       await action(member,'Cancel request'); await message(member,'Request cancelled');
     });
+    await scenario('active delivery rejection explains how to finish before accepting service work',async ({db,account}) => {
+      db.request();const worker=await account(assistant('worker'));await open(worker,'available');
+      db.failRpc={code:'55000'};await action(worker,'Accept request');await message(worker,'Finish your current item delivery');
+      assert.equal(db.requests[0].status,'open');assert.equal(db.assignments.length,0);
+      assert.equal(await worker.getByRole('button',{name:'Accept request',exact:true}).isEnabled(),true);
+      await action(worker,'Accept request');await message(worker,'Request accepted');
+    });
     await scenario('failed list refresh displays error and recovers',async ({db,account}) => {
       db.request(); const member=await account({id:'member'}); db.failQuery='PGRST202';
       await open(member,'mine'); await message(member,'finish setup'); assert.equal(await cards(member).count(),0);

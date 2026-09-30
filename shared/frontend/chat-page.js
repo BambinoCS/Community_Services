@@ -124,8 +124,12 @@
   async function loadSource() {
     if(!sourceType)return;
     el('arrange-panel').hidden=false;el('arrange-fields').disabled=true;
-    const previous=storage.get(attemptKey());
-    if(previous?.id){try{const existing=await ItemChat.get(previous.id);el('arrange-panel').hidden=true;await openConversation(existing.id);return;}catch{}}
+    let previous=storage.get(attemptKey());
+    if(previous?.id){try{
+      const existing=await ItemChat.get(previous.id);
+      if(existing.status==='cancelled'){storage.remove(attemptKey());previous=null;}
+      else{el('arrange-panel').hidden=true;await openConversation(existing.id);return;}
+    }catch{}}
     try{
       source=await ItemChat.source(sourceType,sourceId);
       const own=(sourceType==='donation'?source.donor_id:source.user_id)===state.user.id;
